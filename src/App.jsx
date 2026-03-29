@@ -26,14 +26,6 @@ export default function App() {
   const saveTimerRef              = useRef(null)
   const toastTimerRef             = useRef(null)
   const impRef                    = useRef(null)
-  const latestItemsRef            = useRef(items)
-  const latestOdoRef              = useRef(odo)
-  const userIdRef                 = useRef(null)
-
-  // Keep refs in sync with state so doSave always has the latest values
-  useEffect(() => { latestItemsRef.current = items }, [items])
-  useEffect(() => { latestOdoRef.current   = odo    }, [odo])
-  useEffect(() => { userIdRef.current      = userId }, [userId])
 
   // ─── Auth: anonymous sign-in ─────────────────────────────────────────────
   useEffect(() => {
@@ -97,16 +89,15 @@ export default function App() {
     }
   }
 
-  // ─── Save to Supabase (debounced) ────────────────────────────────────────
+  // ─── Save to Supabase ────────────────────────────────────────────────────
   async function saveToDb(uid, itemsToSave, odoToSave) {
-    const effectiveUid = uid || userId
-    if (!effectiveUid) return
+    if (!uid) return
     setSyncStatus('saving')
     try {
       const { error } = await supabase
         .from('maintenance_data')
         .upsert(
-          { user_id: effectiveUid, items: itemsToSave, odometer: odoToSave },
+          { user_id: uid, items: itemsToSave, odometer: odoToSave },
           { onConflict: 'user_id' }
         )
       if (error) throw error
@@ -119,31 +110,29 @@ export default function App() {
     }
   }
 
-  // Debounced save — waits 800ms after last change before writing to DB
-  function scheduleSave(newItems, newOdo) {
-    latestItemsRef.current = newItems
-    latestOdoRef.current   = newOdo
+  // Debounced save — uid passed explicitly so the timeout closure never goes stale
+  function scheduleSave(uid, newItems, newOdo) {
     clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
-      saveToDb(userIdRef.current, newItems, newOdo)
+      saveToDb(uid, newItems, newOdo)
     }, 800)
   }
 
-  // Manual save — immediately persists current state using latest values
-  function doSave() {
+  // Manual save — useCallback guarantees userId/items/odo are always current
+  const doSave = useCallback(() => {
     clearTimeout(saveTimerRef.current)
-    saveToDb(userIdRef.current, latestItemsRef.current, latestOdoRef.current)
-  }
+    saveToDb(userId, items, odo)
+  }, [userId, items, odo])
 
   // ─── Item mutations ──────────────────────────────────────────────────────
   function updateItems(newItems) {
     setItems(newItems)
-    scheduleSave(newItems, odo)
+    scheduleSave(userId, newItems, odo)
   }
 
   function updateOdo(val) {
     setOdo(val)
-    scheduleSave(items, val)
+    scheduleSave(userId, items, val)
   }
 
   function markReplaced(id) {
