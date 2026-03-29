@@ -28,6 +28,12 @@ export default function App() {
   const impRef                    = useRef(null)
   const latestItemsRef            = useRef(items)
   const latestOdoRef              = useRef(odo)
+  const userIdRef                 = useRef(null)
+
+  // Keep refs in sync with state so doSave always has the latest values
+  useEffect(() => { latestItemsRef.current = items }, [items])
+  useEffect(() => { latestOdoRef.current   = odo    }, [odo])
+  useEffect(() => { userIdRef.current      = userId }, [userId])
 
   // ─── Auth: anonymous sign-in ─────────────────────────────────────────────
   useEffect(() => {
@@ -119,14 +125,14 @@ export default function App() {
     latestOdoRef.current   = newOdo
     clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
-      saveToDb(userId, newItems, newOdo)
+      saveToDb(userIdRef.current, newItems, newOdo)
     }, 800)
   }
 
   // Manual save — immediately persists current state using latest values
   function doSave() {
     clearTimeout(saveTimerRef.current)
-    saveToDb(userId, latestItemsRef.current, latestOdoRef.current)
+    saveToDb(userIdRef.current, latestItemsRef.current, latestOdoRef.current)
   }
 
   // ─── Item mutations ──────────────────────────────────────────────────────
