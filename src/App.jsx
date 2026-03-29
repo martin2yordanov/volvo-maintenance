@@ -114,7 +114,6 @@ export default function App() {
   // Debounced save — waits 800ms after last change before writing to DB
   function scheduleSave(newItems, newOdo) {
     clearTimeout(saveTimerRef.current)
-    setSyncStatus('saving')
     saveTimerRef.current = setTimeout(() => {
       saveToDb(userId, newItems, newOdo)
     }, 800)
