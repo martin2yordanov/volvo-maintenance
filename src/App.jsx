@@ -26,6 +26,8 @@ export default function App() {
   const saveTimerRef              = useRef(null)
   const toastTimerRef             = useRef(null)
   const impRef                    = useRef(null)
+  const latestItemsRef            = useRef(items)
+  const latestOdoRef              = useRef(odo)
 
   // ─── Auth: anonymous sign-in ─────────────────────────────────────────────
   useEffect(() => {
@@ -113,16 +115,18 @@ export default function App() {
 
   // Debounced save — waits 800ms after last change before writing to DB
   function scheduleSave(newItems, newOdo) {
+    latestItemsRef.current = newItems
+    latestOdoRef.current   = newOdo
     clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
       saveToDb(userId, newItems, newOdo)
     }, 800)
   }
 
-  // Manual save — immediately persists current state
+  // Manual save — immediately persists current state using latest values
   function doSave() {
     clearTimeout(saveTimerRef.current)
-    saveToDb(userId, items, odo)
+    saveToDb(userId, latestItemsRef.current, latestOdoRef.current)
   }
 
   // ─── Item mutations ──────────────────────────────────────────────────────
