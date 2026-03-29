@@ -120,6 +120,12 @@ export default function App() {
     }, 800)
   }
 
+  // Manual save — immediately persists current state
+  function doSave() {
+    clearTimeout(saveTimerRef.current)
+    saveToDb(userId, items, odo)
+  }
+
   // ─── Item mutations ──────────────────────────────────────────────────────
   function updateItems(newItems) {
     setItems(newItems)
@@ -321,10 +327,13 @@ export default function App() {
             onChange={e => updateOdo(e.target.value ? parseInt(e.target.value) : null)}
           />
           <span className="odo-unit">км</span>
-          {syncLabel && <span className={`sync-status ${syncClass}`}>{syncLabel}</span>}
-          <span style={{fontSize:'.6rem',color:'var(--txt3)',fontFamily:'var(--fm)',marginLeft:'.3rem'}}>
-            Данните се запазват автоматично в облака
-          </span>
+          <button
+            className={`btn btn-sync${syncStatus === 'saving' ? ' syncing' : ''}`}
+            onClick={doSave}
+            disabled={syncStatus === 'saving'}
+          >
+            {syncStatus === 'saving' ? '⟳ Запазване...' : syncStatus === 'saved' ? '✓ Запазено' : '💾 Запази'}
+          </button>
         </div>
 
         <div className="tabs">
