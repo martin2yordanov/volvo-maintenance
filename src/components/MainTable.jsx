@@ -1,0 +1,156 @@
+import { CAT_ORDER, CAT_ICON, calcNextDue, importanceBadge } from '../lib/data'
+
+function esc(s) {
+  if (!s) return ''
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+}
+
+function StatusBadge({ status }) {
+  const cfg = {
+    red:  { cls: 'b-red',  label: 'Просрочено', dot: true },
+    warn: { cls: 'b-warn', label: 'Предстои',   dot: true },
+    unk:  { cls: 'b-unk',  label: 'Без данни',  dot: false },
+    ok:   { cls: 'b-ok',   label: 'Добре',      dot: false },
+  }
+  const { cls, label, dot } = cfg[status] || cfg.ok
+  return (
+    <span className={`badge ${cls}`}>
+      {dot && <span className="bdot" />}
+      {label}
+    </span>
+  )
+}
+
+function ImportanceBadge({ n }) {
+  const { color, text } = importanceBadge(n)
+  return (
+    <span style={{ fontFamily:'var(--fm)', fontSize:'.85rem', fontWeight:800, color }}>
+      {text}
+    </span>
+  )
+}
+
+function SortTh({ col, label, currentSort, onSort, center }) {
+  const isActive = currentSort.col === col
+  const cls = ['sortable', center && 'c', isActive && (currentSort.dir === 1 ? 'sort-asc' : 'sort-desc')]
+    .filter(Boolean).join(' ')
+  return (
+    <th className={cls} onClick={() => onSort(col)}>{label}</th>
+  )
+}
+
+export default function MainTable({ items, odo, sortState, onSort, onMark, onUpd, onEdit, onDel, onAdd }) {
+  const showCatHeaders = !sortState.col
+
+  const rows = []
+  let lastCat = null
+
+  items.forEach(item => {
+    // Category separator
+    if (showCatHeaders && item.cat !== lastCat) {
+      lastCat = item.cat
+      rows.push(
+        <tr key={`cat-${item.cat}`} className="cat-sep">
+          <td colSpan={10}>
+            {CAT_ICON[item.cat] || '📁'} {item.cat || 'Друго'}
+          </td>
+        </tr>
+      )
+    }
+
+    const c = calcNextDue(item, odo)
+
+    let nextDue = null
+    if (c.ds !== '—') nextDue = <>{c.ds}{c.ks !== '—' && <><br/><span style={{color:'var(--txt3)'}}>{c.ks}</span></>}</>
+    else if (c.ks !== '—') nextDue = <span style={{color:'var(--txt3)'}}>{c.ks}</span>
+    else nextDue = <span style={{color:'var(--txt3)'}}>—</span>
+
+    rows.push(
+      <tr key={item.id} className={item.replaced ? 'dim' : ''}>
+        <td>
+          <div className="iname">{item.name}</div>
+          {item.note && <div className="isub">{item.note}</div>}
+        </td>
+        <td className="c">
+          <span className="ival">{item.intervalKm ? item.intervalKm.toLocaleString('bg') : '—'}</span>
+        </td>
+        <td className="c">
+          <span className="ival">{item.intervalYr || '—'}</span>
+        </td>
+        <td className="c">
+          <ImportanceBadge n={item.importance} />
+        </td>
+        <td>
+          <input
+            type="date"
+            className="ecell"
+            defaultValue={item.lastDate || ''}
+            key={`${item.id}-date`}
+            onBlur={e => onUpd(item.id, 'lastDate', e.target.value || null)}
+            onChange={e => onUpd(item.id, 'lastDate', e.target.value || null)}
+          />
+        </td>
+        <td>
+          <input
+            type="number"
+            className="ecell"
+            defaultValue={item.lastKm || ''}
+            key={`${item.id}-km`}
+            placeholder="—"
+            style={{ minWidth: '80px' }}
+            onBlur={e => onUpd(item.id, 'lastKm', e.target.value ? parseInt(e.target.value) : null)}
+          />
+        </td>
+        <td>
+          <div className="ndue">{nextDue}</div>
+        </td>
+        <td className="c">
+          <StatusBadge status={c.status} />
+        </td>
+        <td className="c">
+          <button
+            className={`chk${item.replaced ? ' on' : ''}`}
+            onClick={() => onMark(item.id)}
+            title="Отбележи като сменено"
+          >
+            ✓
+          </button>
+        </td>
+        <td className="c">
+          <div className="ract">
+            <button className="ibtn" onClick={() => onEdit(item)} title="Редактирай">✎</button>
+            <button className="ibtn del" onClick={() => onDel(item.id)} title="Изтрий">✕</button>
+          </div>
+        </td>
+      </tr>
+    )
+  })
+
+  return (
+    <div className="tbl-wrap">
+      <div className="tbl-scroll">
+        <table>
+          <thead>
+            <tr>
+              <SortTh col="name"       label="Позиция"               currentSort={sortState} onSort={onSort} />
+              <SortTh col="intervalKm" label="км"                     currentSort={sortState} onSort={onSort} center />
+              <SortTh col="intervalYr" label="год."                   currentSort={sortState} onSort={onSort} center />
+              <SortTh col="importance" label="Важност"                currentSort={sortState} onSort={onSort} center />
+              <SortTh col="lastDate"   label="Последна смяна (дата)"  currentSort={sortState} onSort={onSort} />
+              <SortTh col="lastKm"     label="Последна смяна (км)"    currentSort={sortState} onSort={onSort} />
+              <SortTh col="nextDue"    label="Следваща смяна"         currentSort={sortState} onSort={onSort} />
+              <SortTh col="status"     label="Статус"                 currentSort={sortState} onSort={onSort} center />
+              <th className="c">✓</th>
+              <th className="c">—</th>
+            </tr>
+          </thead>
+          <tbody>{rows}</tbody>
+        </table>
+      </div>
+      <button className="add-btn" onClick={onAdd}>＋ Добави нова позиция</button>
+      <div className="src">
+        ℹ Интервалите са базирани на официалното сервизно ръководство Volvo и препоръките на производителя за D5 двигатели.
+      </div>
+    </div>
+  )
+}
