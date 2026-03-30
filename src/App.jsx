@@ -27,15 +27,26 @@ export default function App() {
   const toastTimerRef             = useRef(null)
   const impRef                    = useRef(null)
 
-  // ─── Device ID: persistent UUID stored in localStorage (no auth needed) ────
+  // ─── Auth: anonymous sign-in ─────────────────────────────────────────────
   useEffect(() => {
-    let id = localStorage.getItem('volvo_device_id')
-    if (!id) {
-      id = crypto.randomUUID()
-      localStorage.setItem('volvo_device_id', id)
+    async function initAuth() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        setUserId(session.user.id)
+        await loadData(session.user.id)
+      } else {
+        const { data, error } = await supabase.auth.signInAnonymously()
+        if (error) {
+          console.error('Auth error:', error)
+          setItems(JSON.parse(JSON.stringify(DEFAULTS)))
+          setLoading(false)
+          return
+        }
+        setUserId(data.user.id)
+        await loadData(data.user.id)
+      }
     }
-    setUserId(id)
-    loadData(id)
+    initAuth()
   }, [])
 
   // ─── Load data from Supabase ─────────────────────────────────────────────
