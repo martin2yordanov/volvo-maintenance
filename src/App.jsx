@@ -226,6 +226,8 @@ export default function App() {
 
   // ─── Sorting ─────────────────────────────────────────────────────────────
   function setSort(col) {
+    // "Позиция" always resets to the default grouped-by-category view
+    if (col === 'name') { setSortState({ col: null, dir: 1 }); return }
     setSortState(prev => ({
       col,
       dir: prev.col === col ? prev.dir * -1 : 1

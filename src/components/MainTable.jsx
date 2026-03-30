@@ -31,7 +31,8 @@ function ImportanceBadge({ n }) {
 }
 
 function SortTh({ col, label, currentSort, onSort, center }) {
-  const isActive = currentSort.col === col
+  // "Позиция" is active when in the default grouped view (no sort column set)
+  const isActive = col === 'name' ? currentSort.col === null : currentSort.col === col
   const cls = ['sortable', center && 'c', isActive && (currentSort.dir === 1 ? 'sort-asc' : 'sort-desc')]
     .filter(Boolean).join(' ')
   return (
@@ -87,7 +88,7 @@ export default function MainTable({ items, odo, sortState, onSort, onMark, onUpd
             defaultValue={item.lastDate || ''}
             key={`${item.id}-date`}
             onBlur={e => onUpd(item.id, 'lastDate', e.target.value || null)}
-            onChange={e => onUpd(item.id, 'lastDate', e.target.value || null)}
+            onKeyDown={e => e.key === 'Enter' && e.target.blur()}
           />
         </td>
         <td>
