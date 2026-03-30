@@ -86,7 +86,9 @@ body {
 
 /* ── Stats ──────────────────────────────────────────────────────── */
 .stats { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:.65rem; margin-bottom:1.2rem; }
-.scard { background:var(--surf); border:1px solid var(--bord); border-radius:var(--r); padding:.85rem; }
+.scard { background:var(--surf); border:1px solid var(--bord); border-radius:var(--r); padding:.85rem; cursor:pointer; transition:opacity .15s, box-shadow .15s; }
+.scard:hover { opacity:.85; }
+.scard.scard-active { box-shadow:0 0 0 2px currentColor; opacity:1; }
 .sval  { font-size:1.7rem; font-weight:800; letter-spacing:-1px; line-height:1; }
 .slbl  { font-size:.6rem; color:var(--txt2); font-family:var(--fm); text-transform:uppercase; letter-spacing:.8px; margin-top:.2rem; }
 .s-red  .sval { color:var(--red); }

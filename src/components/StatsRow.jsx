@@ -1,6 +1,6 @@
 import { calcNextDue } from '../lib/data'
 
-export default function StatsRow({ items, odo }) {
+export default function StatsRow({ items, odo, activeFilter, onFilter }) {
   let ok = 0, warn = 0, red = 0, unk = 0
   items.forEach(i => {
     if (i.replaced) return
@@ -11,24 +11,23 @@ export default function StatsRow({ items, odo }) {
     else                   unk++
   })
 
+  const card = (key, cls, val, lbl, style) => (
+    <div
+      className={`scard ${cls}${activeFilter === key ? ' scard-active' : ''}`}
+      style={style}
+      onClick={() => onFilter(key)}
+    >
+      <div className="sval">{val}</div>
+      <div className="slbl">{lbl}</div>
+    </div>
+  )
+
   return (
     <div className="stats">
-      <div className="scard s-red">
-        <div className="sval">{red}</div>
-        <div className="slbl">Просрочени</div>
-      </div>
-      <div className="scard s-warn">
-        <div className="sval">{warn}</div>
-        <div className="slbl">Предстоящи</div>
-      </div>
-      <div className="scard s-ok">
-        <div className="sval">{ok}</div>
-        <div className="slbl">В ред</div>
-      </div>
-      <div className="scard" style={{ borderColor: 'var(--bord2)' }}>
-        <div className="sval" style={{ color: 'var(--txt3)' }}>{unk}</div>
-        <div className="slbl">Без история</div>
-      </div>
+      {card('red',  's-red',  red,  'Просрочени')}
+      {card('warn', 's-warn', warn, 'Предстоящи')}
+      {card('ok',   's-ok',   ok,   'В ред')}
+      {card('unk',  '',       unk,  'Без история', { borderColor: 'var(--bord2)' })}
       <div className="scard s-acc">
         <div className="sval">{odo ? odo.toLocaleString('bg') : '—'}</div>
         <div className="slbl">Текущ км</div>

@@ -23,6 +23,7 @@ export default function App() {
   const [loading, setLoading]     = useState(true)
   const [syncStatus, setSyncStatus] = useState('idle') // idle | saving | saved | error
   const [userId, setUserId]       = useState(null)
+  const [statusFilter, setStatusFilter] = useState(null) // null | 'red' | 'warn' | 'ok' | 'unk'
   const saveTimerRef              = useRef(null)
   const toastTimerRef             = useRef(null)
   const impRef                    = useRef(null)
@@ -358,9 +359,18 @@ export default function App() {
 
         {activeTab === 'main' && (
           <>
-            <StatsRow items={items} odo={odo} />
+            <StatsRow
+              items={items}
+              odo={odo}
+              activeFilter={statusFilter}
+              onFilter={s => setStatusFilter(f => f === s ? null : s)}
+            />
             <MainTable
-              items={sortedItems()}
+              items={sortedItems().filter(i => {
+                if (!statusFilter) return true
+                if (i.replaced) return statusFilter === 'ok'
+                return calcNextDue(i, odo).status === statusFilter
+              })}
               odo={odo}
               sortState={sortState}
               onSort={setSort}
