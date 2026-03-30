@@ -27,29 +27,15 @@ export default function App() {
   const toastTimerRef             = useRef(null)
   const impRef                    = useRef(null)
 
-  // ─── Auth: anonymous sign-in ─────────────────────────────────────────────
+  // ─── Device ID: persistent UUID stored in localStorage (no auth needed) ────
   useEffect(() => {
-    async function initAuth() {
-      // Check if already signed in
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUserId(session.user.id)
-        await loadData(session.user.id)
-      } else {
-        // Sign in anonymously — creates a persistent anonymous user
-        const { data, error } = await supabase.auth.signInAnonymously()
-        if (error) {
-          console.error('Auth error:', error)
-          // Fallback: load defaults
-          setItems(JSON.parse(JSON.stringify(DEFAULTS)))
-          setLoading(false)
-          return
-        }
-        setUserId(data.user.id)
-        await loadData(data.user.id)
-      }
+    let id = localStorage.getItem('volvo_device_id')
+    if (!id) {
+      id = crypto.randomUUID()
+      localStorage.setItem('volvo_device_id', id)
     }
-    initAuth()
+    setUserId(id)
+    loadData(id)
   }, [])
 
   // ─── Load data from Supabase ─────────────────────────────────────────────
@@ -91,8 +77,7 @@ export default function App() {
 
   // ─── Save to Supabase ────────────────────────────────────────────────────
   async function saveToDb(uid, itemsToSave, odoToSave) {
-    console.log('[saveToDb] uid:', uid, '| odo:', odoToSave, '| items:', itemsToSave?.length)
-    if (!uid) { console.warn('[saveToDb] aborted — uid is null'); return }
+    if (!uid) return
     setSyncStatus('saving')
     try {
       const { error } = await supabase
@@ -122,7 +107,6 @@ export default function App() {
 
   // Manual save — useCallback guarantees userId/items/odo are always current
   const doSave = useCallback(() => {
-    console.log('[doSave] userId:', userId, '| odo:', odo, '| items:', items?.length)
     clearTimeout(saveTimerRef.current)
     saveToDb(userId, items, odo)
   }, [userId, items, odo])
