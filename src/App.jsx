@@ -91,7 +91,8 @@ export default function App() {
 
   // ─── Save to Supabase ────────────────────────────────────────────────────
   async function saveToDb(uid, itemsToSave, odoToSave) {
-    if (!uid) return
+    console.log('[saveToDb] uid:', uid, '| odo:', odoToSave, '| items:', itemsToSave?.length)
+    if (!uid) { console.warn('[saveToDb] aborted — uid is null'); return }
     setSyncStatus('saving')
     try {
       const { error } = await supabase
@@ -101,10 +102,11 @@ export default function App() {
           { onConflict: 'user_id' }
         )
       if (error) throw error
+      console.log('[saveToDb] success — odo saved:', odoToSave)
       setSyncStatus('saved')
       setTimeout(() => setSyncStatus('idle'), 2000)
     } catch (err) {
-      console.error('Save error:', err)
+      console.error('[saveToDb] error:', err)
       setSyncStatus('error')
       showToast('⚠️ Грешка при запазване в облака')
     }
@@ -120,6 +122,7 @@ export default function App() {
 
   // Manual save — useCallback guarantees userId/items/odo are always current
   const doSave = useCallback(() => {
+    console.log('[doSave] userId:', userId, '| odo:', odo, '| items:', items?.length)
     clearTimeout(saveTimerRef.current)
     saveToDb(userId, items, odo)
   }, [userId, items, odo])
