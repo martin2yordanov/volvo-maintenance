@@ -75,7 +75,8 @@ export function calcNextDue(item, odo) {
   else if (score <= leway)            status = 'warn'
   else                                status = 'ok'
 
-  const ds = nextMs  ? new Date(nextMs).toISOString().split('T')[0] : '—'
+  const fmt = ms => { const d = new Date(ms); return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}` }
+  const ds = nextMs  ? fmt(nextMs) : '—'
   const ks = nextKm  ? nextKm.toLocaleString('bg') + ' км' : '—'
 
   return { ds, ks, score, status, nextMs, nextKm, dDate, dKm }
