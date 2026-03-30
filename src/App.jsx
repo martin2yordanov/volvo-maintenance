@@ -24,6 +24,7 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState('idle') // idle | saving | saved | error
   const [userId, setUserId]       = useState(null)
   const [statusFilter, setStatusFilter] = useState(null) // null | 'red' | 'warn' | 'ok' | 'unk'
+  const [grouped, setGrouped]     = useState(true)  // true = category view, false = sorted view
   const saveTimerRef              = useRef(null)
   const toastTimerRef             = useRef(null)
   const impRef                    = useRef(null)
@@ -226,8 +227,13 @@ export default function App() {
 
   // ─── Sorting ─────────────────────────────────────────────────────────────
   function setSort(col) {
-    // "Позиция" always resets to the default grouped-by-category view
-    if (col === 'name') { setSortState({ col: null, dir: 1 }); return }
+    if (col === 'name') {
+      // "Позиция" always resets to the default grouped-by-category view
+      setGrouped(true)
+      setSortState({ col: null, dir: 1 })
+      return
+    }
+    setGrouped(false)
     setSortState(prev => ({
       col,
       dir: prev.col === col ? prev.dir * -1 : 1
@@ -251,7 +257,7 @@ export default function App() {
 
   const sortedItems = useCallback(() => {
     const copy = [...items]
-    if (!sortState.col) {
+    if (grouped) {
       return copy.sort((a, b) => {
         const ai = CAT_ORDER.indexOf(a.cat)
         const bi = CAT_ORDER.indexOf(b.cat)
@@ -268,7 +274,7 @@ export default function App() {
       if (av > bv) return  1 * sortState.dir
       return 0
     })
-  }, [items, sortState, odo])
+  }, [items, grouped, sortState, odo])
 
   // ─── Urgent count for badge ───────────────────────────────────────────────
   const urgentCount = items.filter(i => {
@@ -368,6 +374,7 @@ export default function App() {
               onFilter={s => setStatusFilter(f => f === s ? null : s)}
             />
             <MainTable
+              grouped={grouped}
               items={sortedItems().filter(i => {
                 if (!statusFilter) return true
                 if (i.replaced) return statusFilter === 'ok'

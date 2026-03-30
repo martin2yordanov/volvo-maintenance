@@ -30,9 +30,8 @@ function ImportanceBadge({ n }) {
   )
 }
 
-function SortTh({ col, label, currentSort, onSort, center }) {
-  // "Позиция" is active when in the default grouped view (no sort column set)
-  const isActive = col === 'name' ? currentSort.col === null : currentSort.col === col
+function SortTh({ col, label, currentSort, grouped, onSort, center }) {
+  const isActive = col === 'name' ? grouped : currentSort.col === col
   const cls = ['sortable', center && 'c', isActive && (currentSort.dir === 1 ? 'sort-asc' : 'sort-desc')]
     .filter(Boolean).join(' ')
   return (
@@ -40,8 +39,8 @@ function SortTh({ col, label, currentSort, onSort, center }) {
   )
 }
 
-export default function MainTable({ items, odo, sortState, onSort, onMark, onUpd, onEdit, onDel, onAdd }) {
-  const showCatHeaders = !sortState.col
+export default function MainTable({ items, odo, grouped, sortState, onSort, onMark, onUpd, onEdit, onDel, onAdd }) {
+  const showCatHeaders = grouped
 
   const rows = []
   let lastCat = null
@@ -133,14 +132,14 @@ export default function MainTable({ items, odo, sortState, onSort, onMark, onUpd
         <table>
           <thead>
             <tr>
-              <SortTh col="name"       label="Позиция"               currentSort={sortState} onSort={onSort} />
-              <SortTh col="intervalKm" label="км"                     currentSort={sortState} onSort={onSort} center />
-              <SortTh col="intervalYr" label="год."                   currentSort={sortState} onSort={onSort} center />
-              <SortTh col="importance" label="Важност"                currentSort={sortState} onSort={onSort} center />
-              <SortTh col="lastDate"   label="Последна смяна (дата)"  currentSort={sortState} onSort={onSort} />
-              <SortTh col="lastKm"     label="Последна смяна (км)"    currentSort={sortState} onSort={onSort} />
-              <SortTh col="nextDue"    label="Следваща смяна"         currentSort={sortState} onSort={onSort} />
-              <SortTh col="status"     label="Статус"                 currentSort={sortState} onSort={onSort} center />
+              <SortTh col="name"       label="Позиция"               currentSort={sortState} grouped={grouped} onSort={onSort} />
+              <SortTh col="intervalKm" label="км"                     currentSort={sortState} grouped={grouped} onSort={onSort} center />
+              <SortTh col="intervalYr" label="год."                   currentSort={sortState} grouped={grouped} onSort={onSort} center />
+              <SortTh col="importance" label="Важност"                currentSort={sortState} grouped={grouped} onSort={onSort} center />
+              <SortTh col="lastDate"   label="Последна смяна (дата)"  currentSort={sortState} grouped={grouped} onSort={onSort} />
+              <SortTh col="lastKm"     label="Последна смяна (км)"    currentSort={sortState} grouped={grouped} onSort={onSort} />
+              <SortTh col="nextDue"    label="Следваща смяна"         currentSort={sortState} grouped={grouped} onSort={onSort} />
+              <SortTh col="status"     label="Статус"                 currentSort={sortState} grouped={grouped} onSort={onSort} center />
               <th className="c">✓</th>
               <th className="c">—</th>
             </tr>
