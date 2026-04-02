@@ -39,7 +39,7 @@ function SortTh({ col, label, currentSort, grouped, onSort, center }) {
   )
 }
 
-export default function MainTable({ items, odo, grouped, sortState, onSort, onMark, onUpd, onEdit, onDel, onAdd }) {
+export default function MainTable({ items, odo, grouped, sortState, onSort, onMark, onUpd, onEdit, onDel, onAdd, showHidden, hiddenCount, onHide, onToggleHidden }) {
   const showCatHeaders = grouped
 
   const rows = []
@@ -51,7 +51,7 @@ export default function MainTable({ items, odo, grouped, sortState, onSort, onMa
       lastCat = item.cat
       rows.push(
         <tr key={`cat-${item.cat}`} className="cat-sep">
-          <td colSpan={10}>
+          <td colSpan={11}>
             {CAT_ICON[item.cat] || '📁'} {item.cat || 'Друго'}
           </td>
         </tr>
@@ -65,8 +65,10 @@ export default function MainTable({ items, odo, grouped, sortState, onSort, onMa
     else if (c.ks !== '—') nextDue = <span style={{color:'var(--txt3)'}}>{c.ks}</span>
     else nextDue = <span style={{color:'var(--txt3)'}}>—</span>
 
+    const rowClass = [item.replaced ? 'dim' : '', item.hidden ? 'row-hidden' : ''].filter(Boolean).join(' ')
+
     rows.push(
-      <tr key={item.id} className={item.replaced ? 'dim' : ''}>
+      <tr key={item.id} className={rowClass || undefined}>
         <td>
           <div className="iname">{item.name}</div>
           {item.note && <div className="isub">{item.note}</div>}
@@ -107,6 +109,20 @@ export default function MainTable({ items, odo, grouped, sortState, onSort, onMa
         <td className="c">
           <StatusBadge status={c.status} />
         </td>
+        <td>
+          <div className="cost-cell">
+            <span className="cost-sym">€</span>
+            <input
+              type="number"
+              className="ecell"
+              defaultValue={item.cost || ''}
+              key={`${item.id}-cost`}
+              placeholder="—"
+              style={{ minWidth: '60px' }}
+              onBlur={e => onUpd(item.id, 'cost', e.target.value ? parseFloat(e.target.value) : null)}
+            />
+          </div>
+        </td>
         <td className="c">
           <button
             className={`chk${item.replaced ? ' on' : ''}`}
@@ -119,6 +135,13 @@ export default function MainTable({ items, odo, grouped, sortState, onSort, onMa
         <td className="c">
           <div className="ract">
             <button className="ibtn" onClick={() => onEdit(item)} title="Редактирай">✎</button>
+            <button
+              className={`ibtn${item.hidden ? ' hide-on' : ''}`}
+              onClick={() => onHide(item.id)}
+              title={item.hidden ? 'Покажи' : 'Скрий'}
+            >
+              {item.hidden ? '⊙' : '⊘'}
+            </button>
             <button className="ibtn del" onClick={() => onDel(item.id)} title="Изтрий">✕</button>
           </div>
         </td>
@@ -128,6 +151,13 @@ export default function MainTable({ items, odo, grouped, sortState, onSort, onMa
 
   return (
     <div className="tbl-wrap">
+      {hiddenCount > 0 && (
+        <div className="hidden-bar">
+          <button className="btn btn-ghost btn-sm" onClick={onToggleHidden}>
+            {showHidden ? `⊙ Скрий скритите (${hiddenCount})` : `⊘ Покажи скрити (${hiddenCount})`}
+          </button>
+        </div>
+      )}
       <div className="tbl-scroll">
         <table>
           <thead>
@@ -140,6 +170,7 @@ export default function MainTable({ items, odo, grouped, sortState, onSort, onMa
               <SortTh col="lastKm"     label="Последна смяна (км)"    currentSort={sortState} grouped={grouped} onSort={onSort} />
               <SortTh col="nextDue"    label="Следваща смяна"         currentSort={sortState} grouped={grouped} onSort={onSort} />
               <SortTh col="status"     label="Статус"                 currentSort={sortState} grouped={grouped} onSort={onSort} center />
+              <SortTh col="cost"       label="Цена (€)"               currentSort={sortState} grouped={grouped} onSort={onSort} center />
               <th className="c">✓</th>
               <th className="c">—</th>
             </tr>

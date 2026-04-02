@@ -25,6 +25,7 @@ export default function App() {
   const [userId, setUserId]       = useState(null)
   const [statusFilter, setStatusFilter] = useState(null) // null | 'red' | 'warn' | 'ok' | 'unk'
   const [grouped, setGrouped]     = useState(true)  // true = category view, false = sorted view
+  const [showHidden, setShowHidden] = useState(false)
   const saveTimerRef              = useRef(null)
   const toastTimerRef             = useRef(null)
   const impRef                    = useRef(null)
@@ -178,6 +179,15 @@ export default function App() {
     setEditItem(null)
   }
 
+  function hideItem(id) {
+    const item = items.find(i => i.id === id)
+    const newItems = items.map(i =>
+      i.id === id ? { ...i, hidden: !i.hidden } : i
+    )
+    showToast(item?.hidden ? `${item?.name} — показано` : `${item?.name} — скрито`)
+    updateItems(newItems)
+  }
+
   function doReset() {
     if (!confirm('Връщане към началните данни. Продължи?')) return
     const defaults = JSON.parse(JSON.stringify(DEFAULTS))
@@ -251,6 +261,7 @@ export default function App() {
       case 'nextDue':    return c.score
       case 'status':     return STATUS_ORDER[c.status]
       case 'importance': return item.importance || 0
+      case 'cost':       return item.cost || 0
       default:           return 0
     }
   }
@@ -376,6 +387,7 @@ export default function App() {
             <MainTable
               grouped={grouped}
               items={sortedItems().filter(i => {
+                if (i.hidden && !showHidden) return false
                 if (!statusFilter) return true
                 if (i.replaced) return statusFilter === 'ok'
                 return calcNextDue(i, odo).status === statusFilter
@@ -388,6 +400,10 @@ export default function App() {
               onEdit={item => { setEditItem(item); setModalOpen(true) }}
               onDel={deleteItem}
               onAdd={() => { setEditItem(null); setModalOpen(true) }}
+              showHidden={showHidden}
+              hiddenCount={items.filter(i => i.hidden).length}
+              onHide={hideItem}
+              onToggleHidden={() => setShowHidden(s => !s)}
             />
           </>
         )}

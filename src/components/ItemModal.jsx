@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 
 const EMPTY = {
   name: '', cat: '', intervalKm: '', intervalYr: '',
-  lastDate: '', lastKm: '', note: '', importance: 5
+  lastDate: '', lastKm: '', note: '', importance: 5, cost: ''
 }
 
 export default function ItemModal({ item, onSave, onClose }) {
@@ -19,6 +19,7 @@ export default function ItemModal({ item, onSave, onClose }) {
         lastKm:     item.lastKm     || '',
         note:       item.note       || '',
         importance: item.importance || 5,
+        cost:       item.cost       || '',
       })
     } else {
       setForm(EMPTY)
@@ -40,6 +41,7 @@ export default function ItemModal({ item, onSave, onClose }) {
       lastDate:   form.lastDate                || null,
       lastKm:     parseInt(form.lastKm)        || null,
       importance: parseInt(form.importance)    || 5,
+      cost:       parseFloat(form.cost)        || null,
     })
   }
 
@@ -100,6 +102,12 @@ export default function ItemModal({ item, onSave, onClose }) {
           <label>Важност (1–10) — безопасност и последствия</label>
           <input type="number" min="1" max="10" value={form.importance}
             onChange={e => set('importance', e.target.value)} placeholder="1–10" />
+        </div>
+
+        <div className="fg">
+          <label>Цена на ремонта/поддръжката (€)</label>
+          <input type="number" min="0" step="0.01" value={form.cost}
+            onChange={e => set('cost', e.target.value)} placeholder="напр. 150.00" />
         </div>
 
         <div className="mact">
