@@ -318,7 +318,14 @@ export default function App() {
       <header className="hdr">
         <div className="hdr-top">
           <div className="car-id">
-            <div className="vlogo">V</div>
+            <div className="vlogo">
+                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
+                  <circle cx="23" cy="27" r="16" stroke="white" strokeWidth="2.2"/>
+                  <text x="23" y="31" textAnchor="middle" fill="white" fontSize="7" fontWeight="800" fontFamily="'Syne',Arial,sans-serif" letterSpacing="1">VOLVO</text>
+                  <line x1="35" y1="14" x2="43" y2="6" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
+                  <polyline points="38,6 43,6 43,11" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
             <div>
               <h1>Volvo V70 &middot; 2003</h1>
               <span>D5244T &middot; 2.4D &middot; 163 к.с. &middot; Дизел</span>
