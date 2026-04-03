@@ -5,9 +5,11 @@ import MainTable from './components/MainTable.jsx'
 import NeedsAttention from './components/NeedsAttention.jsx'
 import ThisYear from './components/ThisYear.jsx'
 import Forecast from './components/Forecast.jsx'
+import Expenses from './components/Expenses.jsx'
 import ItemModal from './components/ItemModal.jsx'
 import Toast from './components/Toast.jsx'
 import StatsRow from './components/StatsRow.jsx'
+import { KNOWN_COSTS } from './lib/expenses'
 
 const KMY = 15000
 
@@ -65,11 +67,12 @@ export default function App() {
       if (error) throw error
 
       if (data && Array.isArray(data.items) && data.items.length > 0) {
-        // Migrate: ensure every item has cat and importance
+        // Migrate: ensure every item has cat, importance, and known costs
         const migrated = data.items.map(item => ({
           ...item,
           cat: item.cat || 'General',
           importance: item.importance || 5,
+          cost: item.cost ?? KNOWN_COSTS[item.id] ?? null,
         }))
         setItems(migrated)
         setOdo(data.odometer || null)
@@ -365,6 +368,7 @@ export default function App() {
             { id: 'attn', label: '⚠️ Нужно внимание', badge: urgentCount },
             { id: 'year', label: '📅 Тази Година' },
             { id: 'fore', label: '🔮 5-Год. Прогноза' },
+            { id: 'exp',  label: '💸 Разходи' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -425,6 +429,10 @@ export default function App() {
 
         {activeTab === 'fore' && (
           <Forecast items={items} odo={odo} />
+        )}
+
+        {activeTab === 'exp' && (
+          <Expenses />
         )}
       </div>
 

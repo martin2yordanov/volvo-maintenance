@@ -227,6 +227,25 @@ tr.cat-sep td { background:rgba(10,132,255,.06); font-size:.62rem; font-family:v
   th, td { padding:.6rem .65rem; }
 }
 
+/* ── Expenses tab ───────────────────────────────────────────────── */
+.exp-wrap        { display:flex; flex-direction:column; }
+.exp-year-block  { }
+.exp-date        { font-family:var(--fm); font-size:.75rem; color:var(--txt2); white-space:nowrap; }
+.exp-num-hdr     { text-align:right; }
+.exp-num         { text-align:right; font-family:var(--fm); font-size:.8rem; color:var(--txt); padding-right:1.1rem; }
+tfoot .exp-num   { font-weight:800; color:var(--txt); }
+
+.exp-total-row td            { font-family:var(--fm); font-size:.75rem; font-weight:800; color:var(--txt); background:rgba(10,132,255,.07); border-top:1px solid var(--bord2); padding:.65rem .85rem; }
+.exp-total-row .exp-num      { padding-right:1.1rem; }
+
+.exp-grand        { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:1rem; background:var(--surf); border:1px solid var(--bord2); border-radius:var(--r); padding:1.1rem 1.4rem; margin-top:.5rem; }
+.exp-grand-label  { font-size:.7rem; font-family:var(--fm); text-transform:uppercase; letter-spacing:1px; color:var(--txt2); }
+.exp-grand-vals   { display:flex; align-items:center; gap:1rem; }
+.exp-grand-item   { display:flex; align-items:baseline; gap:.35rem; }
+.exp-grand-lbl    { font-size:.65rem; font-family:var(--fm); color:var(--txt3); }
+.exp-grand-num    { font-size:1.4rem; font-weight:800; letter-spacing:-1px; color:var(--acc); }
+.exp-grand-sep    { color:var(--txt3); font-size:.9rem; }
+
 ::-webkit-scrollbar { width:5px; height:5px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--surf3); border-radius:3px; }
