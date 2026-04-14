@@ -227,6 +227,12 @@ tr.cat-sep td { background:rgba(10,132,255,.06); font-size:.62rem; font-family:v
   th, td { padding:.6rem .65rem; }
 }
 
+/* ── Cross-device sync bar ──────────────────────────────────────── */
+.sync-divider  { width:1px; height:1.2rem; background:var(--bord2); flex-shrink:0; }
+.sync-input    { font-family:var(--fm); font-size:.72rem; background:var(--surf2); border:1px solid var(--bord2); border-radius:var(--rs); padding:.35rem .65rem; color:var(--txt); outline:none; width:170px; transition:border-color .14s; }
+.sync-input:focus { border-color:var(--acc); }
+.sync-info     { font-family:var(--fm); font-size:.7rem; color:var(--txt2); white-space:nowrap; }
+
 /* ── Expenses tab ───────────────────────────────────────────────── */
 .exp-wrap        { display:flex; flex-direction:column; }
 .exp-year-block  { }

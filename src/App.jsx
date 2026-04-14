@@ -28,16 +28,26 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState(null) // null | 'red' | 'warn' | 'ok' | 'unk'
   const [grouped, setGrouped]     = useState(true)  // true = category view, false = sorted view
   const [showHidden, setShowHidden] = useState(false)
-  const saveTimerRef              = useRef(null)
-  const toastTimerRef             = useRef(null)
-  const impRef                    = useRef(null)
+  // ─── Cross-device sync state ─────────────────────────────────────────────
+  const [isAnon, setIsAnon]           = useState(true)
+  const [userEmail, setUserEmail]     = useState(null)
+  const [syncBarOpen, setSyncBarOpen] = useState(false)
+  const [syncEmail, setSyncEmail]     = useState('')
+  const [syncSent, setSyncSent]       = useState(false)
+  const [syncBusy, setSyncBusy]       = useState(false)
+  const saveTimerRef   = useRef(null)
+  const toastTimerRef  = useRef(null)
+  const impRef         = useRef(null)
+  const initDoneRef    = useRef(false)
 
-  // ─── Auth: anonymous sign-in ─────────────────────────────────────────────
+  // ─── Auth: anonymous sign-in + cross-device sync listener ──────────────────
   useEffect(() => {
     async function initAuth() {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
         setUserId(session.user.id)
+        setIsAnon(session.user.is_anonymous ?? !session.user.email)
+        setUserEmail(session.user.email ?? null)
         await loadData(session.user.id)
       } else {
         const { data, error } = await supabase.auth.signInAnonymously()
@@ -48,10 +58,40 @@ export default function App() {
           return
         }
         setUserId(data.user.id)
+        setIsAnon(true)
         await loadData(data.user.id)
       }
+      initDoneRef.current = true
     }
+
     initAuth()
+
+    // Listen for auth changes that happen AFTER the initial load:
+    // - User confirms magic-link email  → SIGNED_IN (new device) or USER_UPDATED (same device upgrade)
+    // - User signs out                  → SIGNED_OUT
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!initDoneRef.current) return // ignore events fired during initAuth
+
+        if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+          setUserId(session.user.id)
+          setIsAnon(session.user.is_anonymous ?? !session.user.email)
+          setUserEmail(session.user.email ?? null)
+          setSyncSent(false)
+          setSyncBarOpen(false)
+          await loadData(session.user.id)
+        } else if (event === 'SIGNED_OUT') {
+          setUserEmail(null)
+          setIsAnon(true)
+          const { data } = await supabase.auth.signInAnonymously()
+          if (data?.user) {
+            setUserId(data.user.id)
+            await loadData(data.user.id)
+          }
+        }
+      }
+    )
+    return () => subscription.unsubscribe()
   }, [])
 
   // ─── Load data from Supabase ─────────────────────────────────────────────
@@ -200,6 +240,37 @@ export default function App() {
     showToast('Данните са нулирани')
   }
 
+  // ─── Cross-device sync ───────────────────────────────────────────────────
+  async function sendSync() {
+    const email = syncEmail.trim()
+    if (!email) return
+    setSyncBusy(true)
+    try {
+      if (isAnon) {
+        // Upgrade anonymous account to email account in-place.
+        // The user_id stays the same, so all data is preserved.
+        const { error } = await supabase.auth.updateUser({ email })
+        if (error) throw error
+      } else {
+        // Sign in on a new device using an existing email account.
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: false },
+        })
+        if (error) throw error
+      }
+      setSyncSent(true)
+    } catch (err) {
+      showToast('⚠️ ' + (err.message || 'Грешка при синхронизация'))
+    } finally {
+      setSyncBusy(false)
+    }
+  }
+
+  async function doSignOut() {
+    await supabase.auth.signOut()
+  }
+
   // ─── Import / Export ─────────────────────────────────────────────────────
   function doExport() {
     const blob = new Blob([JSON.stringify({ items, odo }, null, 2)], { type: 'application/json' })
@@ -340,6 +411,42 @@ export default function App() {
             <button className="btn btn-ghost" onClick={() => impRef.current?.click()}>↓ Импорт</button>
             <button className="btn btn-red"   onClick={doReset}>⟳ Нулиране</button>
             <input ref={impRef} type="file" id="imp" accept=".json" onChange={doImport} />
+
+            {/* ── Cross-device sync ── */}
+            <div className="sync-divider" />
+            {userEmail ? (
+              <>
+                <span className="sync-info" title="Данните са свързани с този имейл">☁ {userEmail}</span>
+                <button className="btn btn-ghost btn-sm" onClick={doSignOut}>Изход</button>
+              </>
+            ) : syncBarOpen ? (
+              syncSent ? (
+                <>
+                  <span className="sync-info">📧 Провери имейла си за линк</span>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setSyncBarOpen(false); setSyncSent(false) }}>✕</button>
+                </>
+              ) : (
+                <>
+                  <input
+                    type="email"
+                    className="sync-input"
+                    value={syncEmail}
+                    onChange={e => setSyncEmail(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && sendSync()}
+                    placeholder="your@email.com"
+                    autoFocus
+                  />
+                  <button className="btn btn-pri btn-sm" onClick={sendSync} disabled={syncBusy}>
+                    {syncBusy ? '...' : 'Изпрати'}
+                  </button>
+                  <button className="btn btn-ghost btn-sm" onClick={() => setSyncBarOpen(false)}>✕</button>
+                </>
+              )
+            ) : (
+              <button className="btn btn-ghost btn-sm" onClick={() => setSyncBarOpen(true)} title="Синхронизирай данните си между устройства">
+                ☁ Синхрон
+              </button>
+            )}
           </div>
         </div>
 
