@@ -39,7 +39,7 @@ function SortTh({ col, label, currentSort, grouped, onSort, center }) {
   )
 }
 
-export default function MainTable({ items, odo, grouped, sortState, onSort, onMark, onUpd, onEdit, onDel, onAdd, showHidden, hiddenCount, onHide, onToggleHidden }) {
+export default function MainTable({ items, odo, grouped, sortState, onSort, onMark, onUpd, onEdit, onDel, onAdd, showHidden, hiddenCount, onHide, onToggleHidden, showReplaced, replacedCount, onToggleReplaced }) {
   const showCatHeaders = grouped
 
   const rows = []
@@ -150,11 +150,18 @@ export default function MainTable({ items, odo, grouped, sortState, onSort, onMa
 
   return (
     <div className="tbl-wrap">
-      {hiddenCount > 0 && (
+      {(hiddenCount > 0 || replacedCount > 0) && (
         <div className="hidden-bar">
-          <button className="btn btn-ghost btn-sm" onClick={onToggleHidden}>
-            {showHidden ? `⊙ Скрий скритите (${hiddenCount})` : `⊘ Покажи скрити (${hiddenCount})`}
-          </button>
+          {replacedCount > 0 && (
+            <button className="btn btn-ghost btn-sm" onClick={onToggleReplaced}>
+              {showReplaced ? `✓ Скрий одобрените (${replacedCount})` : `✓ Покажи одобрени (${replacedCount})`}
+            </button>
+          )}
+          {hiddenCount > 0 && (
+            <button className="btn btn-ghost btn-sm" onClick={onToggleHidden}>
+              {showHidden ? `⊙ Скрий скритите (${hiddenCount})` : `⊘ Покажи скрити (${hiddenCount})`}
+            </button>
+          )}
         </div>
       )}
       <div className="tbl-scroll">

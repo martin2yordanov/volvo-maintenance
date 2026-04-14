@@ -28,6 +28,7 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState(null) // null | 'red' | 'warn' | 'ok' | 'unk'
   const [grouped, setGrouped]     = useState(true)  // true = category view, false = sorted view
   const [showHidden, setShowHidden] = useState(false)
+  const [showReplaced, setShowReplaced] = useState(false)
   // ─── Cross-device sync state ─────────────────────────────────────────────
   const [isAnon, setIsAnon]           = useState(true)
   const [userEmail, setUserEmail]     = useState(null)
@@ -536,6 +537,7 @@ export default function App() {
               grouped={grouped}
               items={sortedItems().filter(i => {
                 if (i.hidden && !showHidden) return false
+                if (i.replaced && !showReplaced) return false
                 if (!statusFilter) return true
                 if (i.replaced) return statusFilter === 'ok'
                 return calcNextDue(i, odo).status === statusFilter
@@ -552,6 +554,9 @@ export default function App() {
               hiddenCount={items.filter(i => i.hidden).length}
               onHide={hideItem}
               onToggleHidden={() => setShowHidden(s => !s)}
+              showReplaced={showReplaced}
+              replacedCount={items.filter(i => i.replaced).length}
+              onToggleReplaced={() => setShowReplaced(s => !s)}
             />
           </>
         )}
