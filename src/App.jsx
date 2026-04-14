@@ -113,6 +113,7 @@ export default function App() {
           cat: item.cat || 'General',
           importance: item.importance || 5,
           cost: item.cost ?? KNOWN_COSTS[item.id] ?? null,
+          lastDate: item.lastDate ? item.lastDate.slice(0, 7) : null,
         }))
         setItems(migrated)
         setOdo(data.odometer || null)
@@ -186,7 +187,7 @@ export default function App() {
       return {
         ...item,
         replaced,
-        lastDate: replaced ? new Date().toISOString().split('T')[0] : item.lastDate,
+        lastDate: replaced ? (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}` })() : item.lastDate,
         lastKm:   replaced && odo ? odo : item.lastKm,
       }
     })

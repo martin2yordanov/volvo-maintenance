@@ -8,7 +8,7 @@ export default function Forecast({ items, odo }) {
 
   items.filter(i => !i.replaced).forEach(item => {
     if (!item.intervalYr && !item.intervalKm) return
-    let pd = item.lastDate ? new Date(item.lastDate) : null
+    let pd = item.lastDate ? new Date(item.lastDate.length === 7 ? item.lastDate + '-01' : item.lastDate) : null
     let pk = item.lastKm || (odo ? odo - (item.intervalKm || 0) : null)
 
     for (let c = 0; c < 10; c++) {
@@ -18,7 +18,7 @@ export default function Forecast({ items, odo }) {
         nd.setFullYear(nd.getFullYear() + Math.floor(item.intervalYr))
         const rem = item.intervalYr % 1
         if (rem) nd.setMonth(nd.getMonth() + Math.round(rem * 12))
-        pd = nd; ey = nd.getFullYear(); ds = nd.toISOString().split('T')[0]
+        pd = nd; ey = nd.getFullYear(); ds = `${String(nd.getMonth()+1).padStart(2,'0')}.${nd.getFullYear()}`
       }
       if (pk && item.intervalKm) {
         pk += item.intervalKm

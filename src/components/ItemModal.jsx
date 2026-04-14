@@ -82,8 +82,8 @@ export default function ItemModal({ item, onSave, onClose }) {
 
         <div className="frow">
           <div className="fg">
-            <label>Последна смяна (дата)</label>
-            <input type="date" value={form.lastDate} onChange={e => set('lastDate', e.target.value)} />
+            <label>Последна смяна (м/г)</label>
+            <input type="month" value={form.lastDate} onChange={e => set('lastDate', e.target.value)} />
           </div>
           <div className="fg">
             <label>Последна смяна (км)</label>

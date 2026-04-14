@@ -84,12 +84,11 @@ export default function MainTable({ items, odo, grouped, sortState, onSort, onMa
         </td>
         <td>
           <input
-            type="date"
+            type="month"
             className="ecell"
             defaultValue={item.lastDate || ''}
             key={`${item.id}-date`}
             onBlur={e => onUpd(item.id, 'lastDate', e.target.value || null)}
-            onKeyDown={e => e.key === 'Enter' && e.target.blur()}
           />
         </td>
         <td>

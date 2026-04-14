@@ -1,18 +1,18 @@
 // ─── DEFAULT MAINTENANCE ITEMS ───────────────────────────────────────────────
 export const DEFAULTS = [
-  {id:1,importance:9,cat:"Двигател",name:"Моторно масло + маслен филтър",note:"5W-30 ACEA C3/B4 — Castrol Edge, Mobil 1 ESP",intervalKm:10000,intervalYr:1,lastDate:"2025-07-01",lastKm:null,replaced:false},
-  {id:2,importance:10,cat:"Двигател",name:"Ремък ГРМ + ролки + водна помпа",note:"КРИТИЧНО! Скъсването унищожава двигателя. Цял комплект.",intervalKm:100000,intervalYr:5,lastDate:"2020-11-01",lastKm:null,replaced:false},
+  {id:1,importance:9,cat:"Двигател",name:"Моторно масло + маслен филтър",note:"5W-30 ACEA C3/B4 — Castrol Edge, Mobil 1 ESP",intervalKm:10000,intervalYr:1,lastDate:"2025-07",lastKm:null,replaced:false},
+  {id:2,importance:10,cat:"Двигател",name:"Ремък ГРМ + ролки + водна помпа",note:"КРИТИЧНО! Скъсването унищожава двигателя. Цял комплект.",intervalKm:100000,intervalYr:5,lastDate:"2020-11",lastKm:null,replaced:false},
   {id:3,importance:8,cat:"Двигател",name:"Пистов ремък (серпентина)",note:"Сменяй заедно с обтяжната ролка",intervalKm:60000,intervalYr:4,lastDate:null,lastKm:null,replaced:false},
   {id:4,importance:6,cat:"Двигател",name:"Въздушен филтър",note:"OEM: Volvo 30636333. По-кратък при запрашена среда.",intervalKm:20000,intervalYr:2,lastDate:null,lastKm:null,replaced:false},
   {id:5,importance:9,cat:"Двигател",name:"Горивен филтър",note:"КРИТИЧНО за ТНВД! Мръсният филтър унищожава помпата.",intervalKm:20000,intervalYr:2,lastDate:null,lastKm:null,replaced:false},
   {id:6,importance:7,cat:"Двигател",name:"EGR клапан — почистване",note:"Типичен проблем при D5! Засоряването → грапав ход, черен дим.",intervalKm:80000,intervalYr:4,lastDate:null,lastKm:null,replaced:false},
   {id:7,importance:6,cat:"Двигател",name:"Накалителни свещи (glow plugs)",note:"При трудно стартиране в студено — признак за износване.",intervalKm:80000,intervalYr:4,lastDate:null,lastKm:null,replaced:false},
   {id:8,importance:7,cat:"Двигател",name:"Маслен радиатор — уплътнения",note:"Характерна слабост на D5244T. Провери за теч!",intervalKm:null,intervalYr:5,lastDate:null,lastKm:null,replaced:false},
-  {id:9,importance:7,cat:"Охлаждане",name:"Охлаждаща течност (антифриз)",note:"G11 синя/зелена или OAT G12+. НЕ смесвай типове!",intervalKm:null,intervalYr:3,lastDate:"2020-11-01",lastKm:null,replaced:false},
+  {id:9,importance:7,cat:"Охлаждане",name:"Охлаждаща течност (антифриз)",note:"G11 синя/зелена или OAT G12+. НЕ смесвай типове!",intervalKm:null,intervalYr:3,lastDate:"2020-11",lastKm:null,replaced:false},
   {id:10,importance:6,cat:"Охлаждане",name:"Термостат",note:"Смени при проблеми с температурата или заедно с ГРМ.",intervalKm:150000,intervalYr:8,lastDate:null,lastKm:null,replaced:false},
   {id:11,importance:5,cat:"Охлаждане",name:"Маркучи на охладителната система",note:"Провери за мекост и пукнатини при всяко масло.",intervalKm:null,intervalYr:6,lastDate:null,lastKm:null,replaced:false},
-  {id:12,importance:8,cat:"Трансмисия",name:"Масло за авт. скоростна кутия (АТФ)",note:"AW55-51/55 — Dexron VI или Esso LT71141",intervalKm:60000,intervalYr:5,lastDate:"2026-01-28",lastKm:450000,replaced:false},
-  {id:13,importance:7,cat:"Трансмисия",name:"Трансмисионен маслен филтър (АТФ)",note:"Сменяй заедно с АТФ маслото (вътре в маслената вана)",intervalKm:60000,intervalYr:5,lastDate:"2026-01-28",lastKm:450000,replaced:false},
+  {id:12,importance:8,cat:"Трансмисия",name:"Масло за авт. скоростна кутия (АТФ)",note:"AW55-51/55 — Dexron VI или Esso LT71141",intervalKm:60000,intervalYr:5,lastDate:"2026-01",lastKm:450000,replaced:false},
+  {id:13,importance:7,cat:"Трансмисия",name:"Трансмисионен маслен филтър (АТФ)",note:"Сменяй заедно с АТФ маслото (вътре в маслената вана)",intervalKm:60000,intervalYr:5,lastDate:"2026-01",lastKm:450000,replaced:false},
   {id:14,importance:6,cat:"Трансмисия",name:"Масло за предния диференциал",note:"Провери при всяка смяна на трансмисионно масло.",intervalKm:60000,intervalYr:5,lastDate:null,lastKm:null,replaced:false},
   {id:15,importance:10,cat:"Спирачна система",name:"Спирачна течност",note:"DOT 4 — хигроскопична, сменя се задължително по дата!",intervalKm:null,intervalYr:2,lastDate:null,lastKm:null,replaced:false},
   {id:16,importance:10,cat:"Спирачна система",name:"Предни спирачни накладки",note:"Мин. 3 мм. Провери при всяко масло. Препоръчани: Textar.",intervalKm:40000,intervalYr:3,lastDate:null,lastKm:null,replaced:false},
@@ -23,8 +23,8 @@ export const DEFAULTS = [
   {id:21,importance:7,cat:"Окачване",name:"Амортисьори (4 бр.)",note:"При теч, бумтеж или повишено кланяне = износени.",intervalKm:100000,intervalYr:6,lastDate:null,lastKm:null,replaced:false},
   {id:22,importance:4,cat:"Филтри и течности",name:"Филтър за купе (поленов)",note:"Мръсният вони и намалява ефективността на климатика.",intervalKm:15000,intervalYr:1,lastDate:null,lastKm:null,replaced:false},
   {id:23,importance:5,cat:"Филтри и течности",name:"Течност за кормилно усилване (ХЗУ)",note:"Pentosin CHF 11S или CHF 202. Провери за теч от маркучи.",intervalKm:null,intervalYr:4,lastDate:null,lastKm:null,replaced:false},
-  {id:24,importance:7,cat:"Електрика",name:"Акумулатор",note:"70–80 Ah, 680–720 CCA. Препоръчан AGM или EFB.",intervalKm:null,intervalYr:4,lastDate:"2024-01-01",lastKm:null,replaced:false},
-  {id:25,importance:9,cat:"Гуми и колела",name:"Гуми",note:"Смени при протектор под 3 мм или след 5 год. независимо от износването.",intervalKm:40000,intervalYr:5,lastDate:"2022-08-01",lastKm:null,replaced:false},
+  {id:24,importance:7,cat:"Електрика",name:"Акумулатор",note:"70–80 Ah, 680–720 CCA. Препоръчан AGM или EFB.",intervalKm:null,intervalYr:4,lastDate:"2024-01",lastKm:null,replaced:false},
+  {id:25,importance:9,cat:"Гуми и колела",name:"Гуми",note:"Смени при протектор под 3 мм или след 5 год. независимо от износването.",intervalKm:40000,intervalYr:5,lastDate:"2022-08",lastKm:null,replaced:false},
   {id:26,importance:5,cat:"Гуми и колела",name:"Баланс и геометрия на колелата",note:"При всяка сезонна смяна или при вибрации.",intervalKm:20000,intervalYr:1,lastDate:null,lastKm:null,replaced:false},
   {id:27,importance:7,cat:"Гуми и колела",name:"Гумени спирачни маркучи",note:"Втвърдяват се с времето. Провери за пукнатини. Опасно!",intervalKm:null,intervalYr:6,lastDate:null,lastKm:null,replaced:false}
 ]
@@ -50,7 +50,7 @@ export function calcNextDue(item, odo) {
 
   let nextMs = null
   if (item.lastDate && item.intervalYr) {
-    const d = new Date(item.lastDate)
+    const d = new Date(item.lastDate.length === 7 ? item.lastDate + '-01' : item.lastDate)
     d.setFullYear(d.getFullYear() + Math.floor(item.intervalYr))
     const rem = item.intervalYr % 1
     if (rem) d.setMonth(d.getMonth() + Math.round(rem * 12))
@@ -75,7 +75,7 @@ export function calcNextDue(item, odo) {
   else if (score <= leway)            status = 'warn'
   else                                status = 'ok'
 
-  const fmt = ms => { const d = new Date(ms); return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}` }
+  const fmt = ms => { const d = new Date(ms); return `${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}` }
   const ds = nextMs  ? fmt(nextMs) : '—'
   const ks = nextKm  ? nextKm.toLocaleString('bg') + ' км' : '—'
 
