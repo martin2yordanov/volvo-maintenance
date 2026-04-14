@@ -39,12 +39,15 @@ export default function App() {
   const toastTimerRef  = useRef(null)
   const impRef         = useRef(null)
   const initDoneRef    = useRef(false)
+  const userIdRef      = useRef(null)   // tracks current uid for stale-closure checks
+  const isLoadingRef   = useRef(false)  // prevents concurrent loadData calls
 
   // ─── Auth: anonymous sign-in + cross-device sync listener ──────────────────
   useEffect(() => {
     async function initAuth() {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
+        userIdRef.current = session.user.id
         setUserId(session.user.id)
         setIsAnon(session.user.is_anonymous ?? !session.user.email)
         setUserEmail(session.user.email ?? null)
@@ -57,6 +60,7 @@ export default function App() {
           setLoading(false)
           return
         }
+        userIdRef.current = data.user.id
         setUserId(data.user.id)
         setIsAnon(true)
         await loadData(data.user.id)
@@ -69,11 +73,18 @@ export default function App() {
     // Listen for auth changes that happen AFTER the initial load:
     // - User confirms magic-link email  → SIGNED_IN (new device) or USER_UPDATED (same device upgrade)
     // - User signs out                  → SIGNED_OUT
+    // NOTE: Supabase also fires SIGNED_IN / TOKEN_REFRESHED when the tab regains focus
+    //       and the JWT is silently refreshed. We must ignore those to avoid a reload loop.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!initDoneRef.current) return // ignore events fired during initAuth
 
+        // Token refresh on tab focus — same user, no data change needed
+        if (event === 'TOKEN_REFRESHED') return
+        if (event === 'SIGNED_IN' && session?.user?.id === userIdRef.current) return
+
         if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+          userIdRef.current = session.user.id
           setUserId(session.user.id)
           setIsAnon(session.user.is_anonymous ?? !session.user.email)
           setUserEmail(session.user.email ?? null)
@@ -81,10 +92,12 @@ export default function App() {
           setSyncBarOpen(false)
           await loadData(session.user.id)
         } else if (event === 'SIGNED_OUT') {
+          userIdRef.current = null
           setUserEmail(null)
           setIsAnon(true)
           const { data } = await supabase.auth.signInAnonymously()
           if (data?.user) {
+            userIdRef.current = data.user.id
             setUserId(data.user.id)
             await loadData(data.user.id)
           }
@@ -96,7 +109,21 @@ export default function App() {
 
   // ─── Load data from Supabase ─────────────────────────────────────────────
   async function loadData(uid) {
+    if (isLoadingRef.current) return // prevent concurrent / overlapping fetches
+    isLoadingRef.current = true
     setLoading(true)
+
+    // Safety net: if the fetch never resolves (e.g. token mid-refresh), unblock after 10 s
+    const timeoutId = setTimeout(() => {
+      if (isLoadingRef.current) {
+        console.error('[loadData] timeout — unblocking loading state')
+        isLoadingRef.current = false
+        setLoading(false)
+        showToast('Грешка: таймаут при зареждане. Работи офлайн.')
+        setItems(prev => prev.length ? prev : JSON.parse(JSON.stringify(DEFAULTS)))
+      }
+    }, 10000)
+
     try {
       const { data, error } = await supabase
         .from('maintenance_data')
@@ -129,6 +156,8 @@ export default function App() {
       showToast('Грешка при зареждане. Работи офлайн.')
       setItems(JSON.parse(JSON.stringify(DEFAULTS)))
     } finally {
+      clearTimeout(timeoutId)
+      isLoadingRef.current = false
       setLoading(false)
     }
   }
