@@ -29,6 +29,7 @@ export default function App() {
   const [grouped, setGrouped]     = useState(true)  // true = category view, false = sorted view
   const [showHidden, setShowHidden] = useState(false)
   const [showReplaced, setShowReplaced] = useState(false)
+  const [manualExpenses, setManualExpenses] = useState([])
   // ─── Cross-device sync state ─────────────────────────────────────────────
   const [isAnon, setIsAnon]           = useState(true)
   const [userEmail, setUserEmail]     = useState(null)
@@ -40,8 +41,9 @@ export default function App() {
   const toastTimerRef  = useRef(null)
   const impRef         = useRef(null)
   const initDoneRef    = useRef(false)
-  const userIdRef      = useRef(null)   // tracks current uid for stale-closure checks
-  const isLoadingRef   = useRef(false)  // prevents concurrent loadData calls
+  const userIdRef         = useRef(null)   // tracks current uid for stale-closure checks
+  const isLoadingRef      = useRef(false)  // prevents concurrent loadData calls
+  const manualExpensesRef = useRef([])     // keeps expenses current for debounced saves
 
   // ─── Auth: anonymous sign-in + cross-device sync listener ──────────────────
   useEffect(() => {
@@ -128,7 +130,7 @@ export default function App() {
     try {
       const { data, error } = await supabase
         .from('maintenance_data')
-        .select('items, odometer')
+        .select('items, odometer, expenses')
         .eq('user_id', uid)
         .maybeSingle()
 
@@ -145,12 +147,15 @@ export default function App() {
         }))
         setItems(migrated)
         setOdo(data.odometer || null)
+        const savedExpenses = data.expenses || []
+        manualExpensesRef.current = savedExpenses
+        setManualExpenses(savedExpenses)
       } else {
         // First time: seed with defaults, then save to DB
         const defaults = JSON.parse(JSON.stringify(DEFAULTS))
         setItems(defaults)
         setOdo(null)
-        await saveToDb(uid, defaults, null)
+        await saveToDb(uid, defaults, null, [])
       }
     } catch (err) {
       console.error('Load error:', err)
@@ -164,14 +169,14 @@ export default function App() {
   }
 
   // ─── Save to Supabase ────────────────────────────────────────────────────
-  async function saveToDb(uid, itemsToSave, odoToSave) {
+  async function saveToDb(uid, itemsToSave, odoToSave, expensesToSave) {
     if (!uid) return
     setSyncStatus('saving')
     try {
       const { error } = await supabase
         .from('maintenance_data')
         .upsert(
-          { user_id: uid, items: itemsToSave, odometer: odoToSave },
+          { user_id: uid, items: itemsToSave, odometer: odoToSave, expenses: expensesToSave ?? manualExpensesRef.current },
           { onConflict: 'user_id' }
         )
       if (error) throw error
@@ -260,6 +265,20 @@ export default function App() {
     )
     showToast(item?.hidden ? `${item?.name} — показано` : `${item?.name} — скрито`)
     updateItems(newItems)
+  }
+
+  function addExpense(exp) {
+    const updated = [...manualExpensesRef.current, exp]
+    manualExpensesRef.current = updated
+    setManualExpenses(updated)
+    saveToDb(userId, items, odo, updated)
+  }
+
+  function deleteExpense(id) {
+    const updated = manualExpensesRef.current.filter(e => e.id !== id)
+    manualExpensesRef.current = updated
+    setManualExpenses(updated)
+    saveToDb(userId, items, odo, updated)
   }
 
   function doReset() {
@@ -574,7 +593,7 @@ export default function App() {
         )}
 
         {activeTab === 'exp' && (
-          <Expenses items={items} />
+          <Expenses items={items} manualExpenses={manualExpenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} />
         )}
       </div>
 

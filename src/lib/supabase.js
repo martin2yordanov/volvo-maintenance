@@ -51,3 +51,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 // create trigger maintenance_data_updated_at
 //   before update on maintenance_data
 //   for each row execute function update_updated_at();
+//
+// -- 3. Add manual expenses column (run once if table already exists):
+// alter table maintenance_data add column if not exists expenses jsonb not null default '[]'::jsonb;

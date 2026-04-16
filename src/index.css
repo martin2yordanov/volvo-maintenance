@@ -252,6 +252,11 @@ tfoot .exp-num   { font-weight:800; color:var(--txt); }
 .exp-grand-num    { font-size:1.4rem; font-weight:800; letter-spacing:-1px; color:var(--acc); }
 .exp-grand-sep    { color:var(--txt3); font-size:.9rem; }
 
+/* ── Manual expense add form ── */
+.exp-add-form { display:flex; align-items:center; flex-wrap:wrap; gap:.5rem; padding:.75rem 1rem; background:var(--surf2); border:1px solid var(--bord2); border-radius:var(--rs); margin-bottom:1.5rem; }
+.exp-add-btn-row { text-align:center; margin-bottom:1.5rem; }
+.exp-manual td:first-child { border-left:2px solid var(--acc); }
+
 ::-webkit-scrollbar { width:5px; height:5px; }
 ::-webkit-scrollbar-track { background:transparent; }
 ::-webkit-scrollbar-thumb { background:var(--surf3); border-radius:3px; }
