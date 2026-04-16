@@ -574,7 +574,7 @@ export default function App() {
         )}
 
         {activeTab === 'exp' && (
-          <Expenses />
+          <Expenses items={items} />
         )}
       </div>
 

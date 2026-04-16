@@ -1,23 +1,39 @@
 import { EXPENSES, fmtExpDate, fmtMoney } from '../lib/expenses'
 
-// Group expenses by year and compute totals
-const byYear = {}
-EXPENSES.forEach(e => {
-  if (!byYear[e.year]) byYear[e.year] = []
-  byYear[e.year].push(e)
-})
-const years = Object.keys(byYear).map(Number).sort((a, b) => a - b)
+const R = 1.95583
 
-const grandBgn = EXPENSES.reduce((s, e) => s + e.bgn, 0)
-const grandEur = EXPENSES.reduce((s, e) => s + e.eur, 0)
+export default function Expenses({ items = [] }) {
+  // Dynamic entries from maintenance items that have a cost and a date set
+  const itemEntries = items
+    .filter(i => i.cost && i.lastDate)
+    .map(i => ({
+      id: `item-${i.id}`,
+      date: i.lastDate,
+      year: parseInt(i.lastDate.split('-')[0]),
+      description: i.name,
+      eur: i.cost,
+      bgn: Math.round(i.cost * R * 100) / 100,
+    }))
 
-export default function Expenses() {
+  const allExpenses = [...EXPENSES, ...itemEntries]
+
+  // Group by year
+  const byYear = {}
+  allExpenses.forEach(e => {
+    if (!byYear[e.year]) byYear[e.year] = []
+    byYear[e.year].push(e)
+  })
+  const years = Object.keys(byYear).map(Number).sort((a, b) => a - b)
+
+  const grandBgn = allExpenses.reduce((s, e) => s + e.bgn, 0)
+  const grandEur = allExpenses.reduce((s, e) => s + e.eur, 0)
+
   return (
     <div className="exp-wrap">
       {years.map(year => {
-        const items = byYear[year]
-        const totalBgn = items.reduce((s, e) => s + e.bgn, 0)
-        const totalEur = items.reduce((s, e) => s + e.eur, 0)
+        const entries = byYear[year]
+        const totalBgn = entries.reduce((s, e) => s + e.bgn, 0)
+        const totalEur = entries.reduce((s, e) => s + e.eur, 0)
 
         return (
           <div key={year} className="exp-year-block">
@@ -41,7 +57,7 @@ export default function Expenses() {
                     </tr>
                   </thead>
                   <tbody>
-                    {items.map(e => (
+                    {entries.map(e => (
                       <tr key={e.id}>
                         <td className="exp-date">{fmtExpDate(e.date)}</td>
                         <td className="iname">{e.description}</td>
