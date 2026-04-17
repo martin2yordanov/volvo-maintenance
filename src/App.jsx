@@ -274,11 +274,24 @@ export default function App() {
     saveToDb(userId, items, odo, updated)
   }
 
-  function deleteExpense(id) {
-    const updated = manualExpensesRef.current.filter(e => e.id !== id)
-    manualExpensesRef.current = updated
-    setManualExpenses(updated)
-    saveToDb(userId, items, odo, updated)
+  function deleteExpense(entry) {
+    if (entry.manual) {
+      // User-added entry — remove from array
+      const updated = manualExpensesRef.current.filter(e => e.id !== entry.id)
+      manualExpensesRef.current = updated
+      setManualExpenses(updated)
+      saveToDb(userId, items, odo, updated)
+    } else if (typeof entry.id === 'string' && entry.id.startsWith('item-')) {
+      // Derived from a maintenance item — clear its cost
+      const itemId = parseInt(entry.id.replace('item-', ''))
+      updField(itemId, 'cost', null)
+    } else {
+      // Static historical entry — store tombstone so it stays hidden
+      const updated = [...manualExpensesRef.current, { id: entry.id, _deleted: true }]
+      manualExpensesRef.current = updated
+      setManualExpenses(updated)
+      saveToDb(userId, items, odo, updated)
+    }
   }
 
   function doReset() {
@@ -593,7 +606,7 @@ export default function App() {
         )}
 
         {activeTab === 'exp' && (
-          <Expenses items={items} manualExpenses={manualExpenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} />
+          <Expenses items={items} manualExpenses={manualExpenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} onUpdItem={updField} />
         )}
       </div>
 

@@ -3,7 +3,7 @@ import { EXPENSES, fmtExpDate, fmtMoney } from '../lib/expenses'
 
 const R = 1.95583
 
-export default function Expenses({ items = [], manualExpenses = [], onAddExpense, onDeleteExpense }) {
+export default function Expenses({ items = [], manualExpenses = [], onAddExpense, onDeleteExpense, onUpdItem }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ date: '', description: '', eur: '' })
 
@@ -19,7 +19,11 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
       bgn: Math.round(i.cost * R * 100) / 100,
     }))
 
-  const allExpenses = [...EXPENSES, ...itemEntries, ...manualExpenses]
+  // IDs of static entries the user has deleted (stored as tombstones)
+  const deletedIds = new Set(manualExpenses.filter(e => e._deleted).map(e => e.id))
+  const activeManual = manualExpenses.filter(e => e.manual)
+
+  const allExpenses = [...EXPENSES.filter(e => !deletedIds.has(e.id)), ...itemEntries, ...activeManual]
 
   // Group by year
   const byYear = {}
@@ -53,9 +57,9 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
     setAdding(false)
   }
 
-  function handleDelete(id) {
+  function handleDelete(entry) {
     if (!confirm('Изтрий този разход?')) return
-    onDeleteExpense(id)
+    onDeleteExpense(entry)
   }
 
   return (
@@ -95,9 +99,7 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
                         <td className="exp-num">{fmtMoney(e.bgn)}</td>
                         <td className="exp-num">{fmtMoney(e.eur)}</td>
                         <td className="c">
-                          {e.manual && (
-                            <button className="ibtn del" onClick={() => handleDelete(e.id)} title="Изтрий">✕</button>
-                          )}
+                          <button className="ibtn del" onClick={() => handleDelete(e)} title="Изтрий">✕</button>
                         </td>
                       </tr>
                     ))}
