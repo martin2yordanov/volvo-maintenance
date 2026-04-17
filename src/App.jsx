@@ -274,6 +274,29 @@ export default function App() {
     saveToDb(userId, items, odo, updated)
   }
 
+  function updateExpenseDescription(entry, newDescription) {
+    if (!newDescription.trim()) return
+    let updated
+    if (entry.manual) {
+      updated = manualExpensesRef.current.map(e =>
+        e.id === entry.id ? { ...e, description: newDescription.trim() } : e
+      )
+    } else {
+      // Store or update a description override keyed by entry id
+      const hasOverride = manualExpensesRef.current.some(e => e.id === entry.id && '_description' in e)
+      if (hasOverride) {
+        updated = manualExpensesRef.current.map(e =>
+          (e.id === entry.id && '_description' in e) ? { ...e, _description: newDescription.trim() } : e
+        )
+      } else {
+        updated = [...manualExpensesRef.current, { id: entry.id, _description: newDescription.trim() }]
+      }
+    }
+    manualExpensesRef.current = updated
+    setManualExpenses(updated)
+    saveToDb(userId, items, odo, updated)
+  }
+
   function deleteExpense(entry) {
     if (entry.manual) {
       // User-added entry — remove from array
@@ -606,7 +629,7 @@ export default function App() {
         )}
 
         {activeTab === 'exp' && (
-          <Expenses items={items} manualExpenses={manualExpenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} onUpdItem={updField} />
+          <Expenses items={items} manualExpenses={manualExpenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} onUpdateDescription={updateExpenseDescription} />
         )}
       </div>
 

@@ -3,7 +3,7 @@ import { EXPENSES, fmtExpDate, fmtMoney } from '../lib/expenses'
 
 const R = 1.95583
 
-export default function Expenses({ items = [], manualExpenses = [], onAddExpense, onDeleteExpense, onUpdItem }) {
+export default function Expenses({ items = [], manualExpenses = [], onAddExpense, onDeleteExpense, onUpdateDescription }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ date: '', description: '', eur: '' })
 
@@ -19,11 +19,20 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
       bgn: Math.round(i.cost * R * 100) / 100,
     }))
 
-  // IDs of static entries the user has deleted (stored as tombstones)
-  const deletedIds = new Set(manualExpenses.filter(e => e._deleted).map(e => e.id))
+  const deletedIds   = new Set(manualExpenses.filter(e => e._deleted).map(e => e.id))
+  const descOverrides = Object.fromEntries(
+    manualExpenses.filter(e => '_description' in e).map(e => [e.id, e._description])
+  )
   const activeManual = manualExpenses.filter(e => e.manual)
 
-  const allExpenses = [...EXPENSES.filter(e => !deletedIds.has(e.id)), ...itemEntries, ...activeManual]
+  // Apply description overrides to all entry types
+  const applyOverride = e => descOverrides[e.id] ? { ...e, description: descOverrides[e.id] } : e
+
+  const allExpenses = [
+    ...EXPENSES.filter(e => !deletedIds.has(e.id)).map(applyOverride),
+    ...itemEntries.map(applyOverride),
+    ...activeManual,
+  ]
 
   // Group by year
   const byYear = {}
@@ -95,7 +104,16 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
                     {entries.map(e => (
                       <tr key={e.id} className={e.manual ? 'exp-manual' : undefined}>
                         <td className="exp-date">{fmtExpDate(e.date)}</td>
-                        <td className="iname">{e.description}</td>
+                        <td className="iname">
+                          <input
+                            type="text"
+                            className="ecell"
+                            defaultValue={e.description}
+                            key={`${e.id}-desc`}
+                            onBlur={ev => { if (ev.target.value !== e.description) onUpdateDescription(e, ev.target.value) }}
+                            onKeyDown={ev => ev.key === 'Enter' && ev.target.blur()}
+                          />
+                        </td>
                         <td className="exp-num">{fmtMoney(e.bgn)}</td>
                         <td className="exp-num">{fmtMoney(e.eur)}</td>
                         <td className="c">
