@@ -130,26 +130,38 @@ export default function App() {
     try {
       const { data, error } = await supabase
         .from('maintenance_data')
-        .select('items, odometer, expenses')
+        .select('items, odometer')
         .eq('user_id', uid)
         .maybeSingle()
 
       if (error) throw error
 
-      if (data && Array.isArray(data.items) && data.items.length > 0) {
-        // Migrate: ensure every item has cat, importance, and known costs
-        const migrated = data.items.map(item => ({
-          ...item,
-          cat: item.cat || 'General',
-          importance: item.importance || 5,
-          cost: item.cost ?? KNOWN_COSTS[item.id] ?? null,
-          lastDate: item.lastDate ? item.lastDate.slice(0, 7) : null,
-        }))
-        setItems(migrated)
-        setOdo(data.odometer || null)
-        const savedExpenses = data.expenses || []
-        manualExpensesRef.current = savedExpenses
-        setManualExpenses(savedExpenses)
+      if (data && data.items) {
+        // Detect storage format:
+        // legacy = plain array of maintenance items
+        // current = { maintenance: [...], expenses: [...] }
+        const raw = data.items
+        const maintenanceRaw = Array.isArray(raw) ? raw : (raw.maintenance || [])
+        const loadedExpenses = Array.isArray(raw) ? [] : (raw.expenses || [])
+
+        if (maintenanceRaw.length > 0) {
+          const migrated = maintenanceRaw.map(item => ({
+            ...item,
+            cat: item.cat || 'General',
+            importance: item.importance || 5,
+            cost: item.cost ?? KNOWN_COSTS[item.id] ?? null,
+            lastDate: item.lastDate ? item.lastDate.slice(0, 7) : null,
+          }))
+          setItems(migrated)
+          setOdo(data.odometer || null)
+          manualExpensesRef.current = loadedExpenses
+          setManualExpenses(loadedExpenses)
+        } else {
+          const defaults = JSON.parse(JSON.stringify(DEFAULTS))
+          setItems(defaults)
+          setOdo(null)
+          await saveToDb(uid, defaults, null, [])
+        }
       } else {
         // First time: seed with defaults, then save to DB
         const defaults = JSON.parse(JSON.stringify(DEFAULTS))
@@ -172,11 +184,17 @@ export default function App() {
   async function saveToDb(uid, itemsToSave, odoToSave, expensesToSave) {
     if (!uid) return
     setSyncStatus('saving')
+    // Store maintenance items and expenses together in the items JSONB column
+    // to avoid requiring a schema migration for a separate expenses column.
+    const itemsPayload = {
+      maintenance: itemsToSave,
+      expenses: expensesToSave ?? manualExpensesRef.current,
+    }
     try {
       const { error } = await supabase
         .from('maintenance_data')
         .upsert(
-          { user_id: uid, items: itemsToSave, odometer: odoToSave, expenses: expensesToSave ?? manualExpensesRef.current },
+          { user_id: uid, items: itemsPayload, odometer: odoToSave },
           { onConflict: 'user_id' }
         )
       if (error) throw error
