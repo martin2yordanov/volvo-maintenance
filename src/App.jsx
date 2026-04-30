@@ -274,22 +274,28 @@ export default function App() {
     saveToDb(userId, items, odo, updated)
   }
 
-  function updateExpenseDescription(entry, newDescription) {
-    if (!newDescription.trim()) return
+  function updateExpenseField(entry, field, value) {
+    const trimmed = typeof value === 'string' ? value.trim() : value
+    if (field !== 'eur' && !trimmed) return
+    const parsed = field === 'eur' ? parseFloat(trimmed) : trimmed
+    if (field === 'eur' && (isNaN(parsed) || parsed < 0)) return
     let updated
     if (entry.manual) {
-      updated = manualExpensesRef.current.map(e =>
-        e.id === entry.id ? { ...e, description: newDescription.trim() } : e
-      )
+      updated = manualExpensesRef.current.map(e => {
+        if (e.id !== entry.id) return e
+        const patch = { [field]: parsed }
+        if (field === 'date') patch.year = parseInt(parsed.split('-')[0])
+        return { ...e, ...patch }
+      })
     } else {
-      // Store or update a description override keyed by entry id
-      const hasOverride = manualExpensesRef.current.some(e => e.id === entry.id && '_description' in e)
+      const key = `_${field}`
+      const hasOverride = manualExpensesRef.current.some(e => e.id === entry.id && key in e)
       if (hasOverride) {
         updated = manualExpensesRef.current.map(e =>
-          (e.id === entry.id && '_description' in e) ? { ...e, _description: newDescription.trim() } : e
+          (e.id === entry.id && key in e) ? { ...e, [key]: parsed } : e
         )
       } else {
-        updated = [...manualExpensesRef.current, { id: entry.id, _description: newDescription.trim() }]
+        updated = [...manualExpensesRef.current, { id: entry.id, [key]: parsed }]
       }
     }
     manualExpensesRef.current = updated
@@ -546,44 +552,46 @@ export default function App() {
           </div>
         </div>
 
-        <div className="odo-bar">
-          <span className="odo-lbl">Километраж:</span>
-          <input
-            type="number"
-            className="odo-inp"
-            placeholder="——"
-            value={odo ?? ''}
-            onChange={e => updateOdo(e.target.value ? parseInt(e.target.value) : null)}
-          />
-          <span className="odo-unit">км</span>
-          <button
-            className={`btn btn-sync${syncStatus === 'saving' ? ' syncing' : ''}`}
-            onClick={doSave}
-            disabled={syncStatus === 'saving'}
-          >
-            {syncStatus === 'saving' ? '⟳ Запазване...' : syncStatus === 'saved' ? '✓ Запазено' : '💾 Запази'}
-          </button>
-        </div>
-
-        <div className="tabs">
-          {[
-            { id: 'main', label: '📋 Всички' },
-            { id: 'attn', label: '⚠️ Нужно внимание', badge: urgentCount },
-            { id: 'year', label: '📅 Тази Година' },
-            { id: 'fore', label: '🔮 5-Год. Прогноза' },
-            { id: 'exp',  label: '💸 Разходи' },
-          ].map(tab => (
+        <div className="hdr-bottom">
+          <div className="odo-bar">
+            <span className="odo-lbl">Километраж:</span>
+            <input
+              type="number"
+              className="odo-inp"
+              placeholder="——"
+              value={odo ?? ''}
+              onChange={e => updateOdo(e.target.value ? parseInt(e.target.value) : null)}
+            />
+            <span className="odo-unit">км</span>
             <button
-              key={tab.id}
-              className={`tab${activeTab === tab.id ? ' on' : ''}`}
-              onClick={() => setActiveTab(tab.id)}
+              className={`btn btn-sync${syncStatus === 'saving' ? ' syncing' : ''}`}
+              onClick={doSave}
+              disabled={syncStatus === 'saving'}
             >
-              {tab.label}
-              {tab.badge > 0 && (
-                <span className="attn-badge">{tab.badge}</span>
-              )}
+              {syncStatus === 'saving' ? '⟳ Запазване...' : syncStatus === 'saved' ? '✓ Запазено' : '💾 Запази'}
             </button>
-          ))}
+          </div>
+
+          <div className="tabs">
+            {[
+              { id: 'main', label: '📋 Всички' },
+              { id: 'attn', label: '⚠️ Нужно внимание', badge: urgentCount },
+              { id: 'year', label: '📅 Тази Година' },
+              { id: 'fore', label: '🔮 5-Год. Прогноза' },
+              { id: 'exp',  label: '💸 Разходи' },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                className={`tab${activeTab === tab.id ? ' on' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+                {tab.badge > 0 && (
+                  <span className="attn-badge">{tab.badge}</span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
@@ -639,7 +647,7 @@ export default function App() {
         )}
 
         {activeTab === 'exp' && (
-          <Expenses items={items} manualExpenses={manualExpenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} onUpdateDescription={updateExpenseDescription} />
+          <Expenses items={items} manualExpenses={manualExpenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} onUpdateField={updateExpenseField} />
         )}
       </div>
 

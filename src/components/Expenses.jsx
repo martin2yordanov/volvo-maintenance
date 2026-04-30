@@ -3,7 +3,7 @@ import { EXPENSES, fmtExpDate, fmtMoney } from '../lib/expenses'
 
 const R = 1.95583
 
-export default function Expenses({ items = [], manualExpenses = [], onAddExpense, onDeleteExpense, onUpdateDescription }) {
+export default function Expenses({ items = [], manualExpenses = [], onAddExpense, onDeleteExpense, onUpdateField }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ date: '', description: '', eur: '' })
 
@@ -16,21 +16,26 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
       year: parseInt(i.lastDate.split('-')[0]),
       description: i.name,
       eur: i.cost,
-      bgn: Math.round(i.cost * R * 100) / 100,
     }))
 
-  const deletedIds   = new Set(manualExpenses.filter(e => e._deleted).map(e => e.id))
-  const descOverrides = Object.fromEntries(
-    manualExpenses.filter(e => '_description' in e).map(e => [e.id, e._description])
-  )
-  const activeManual = manualExpenses.filter(e => e.manual)
+  // Tombstones and field overrides stored alongside manual entries
+  const deletedIds     = new Set(manualExpenses.filter(e => e._deleted).map(e => e.id))
+  const descOverrides  = Object.fromEntries(manualExpenses.filter(e => '_description' in e).map(e => [e.id, e._description]))
+  const dateOverrides  = Object.fromEntries(manualExpenses.filter(e => '_date' in e).map(e => [e.id, e._date]))
+  const eurOverrides   = Object.fromEntries(manualExpenses.filter(e => '_eur' in e).map(e => [e.id, e._eur]))
+  const activeManual   = manualExpenses.filter(e => e.manual)
 
-  // Apply description overrides to all entry types
-  const applyOverride = e => descOverrides[e.id] ? { ...e, description: descOverrides[e.id] } : e
+  function applyOverrides(e) {
+    const patch = {}
+    if (descOverrides[e.id] !== undefined) patch.description = descOverrides[e.id]
+    if (dateOverrides[e.id] !== undefined) { patch.date = dateOverrides[e.id]; patch.year = parseInt(dateOverrides[e.id].split('-')[0]) }
+    if (eurOverrides[e.id]  !== undefined) patch.eur  = eurOverrides[e.id]
+    return Object.keys(patch).length ? { ...e, ...patch } : e
+  }
 
   const allExpenses = [
-    ...EXPENSES.filter(e => !deletedIds.has(e.id)).map(applyOverride),
-    ...itemEntries.map(applyOverride),
+    ...EXPENSES.filter(e => !deletedIds.has(e.id)).map(applyOverrides),
+    ...itemEntries.map(applyOverrides),
     ...activeManual,
   ]
 
@@ -41,8 +46,6 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
     byYear[e.year].push(e)
   })
   const years = Object.keys(byYear).map(Number).sort((a, b) => a - b)
-
-  const grandBgn = allExpenses.reduce((s, e) => s + e.bgn, 0)
   const grandEur = allExpenses.reduce((s, e) => s + e.eur, 0)
 
   function openAdd() {
@@ -60,7 +63,6 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
       year: parseInt(form.date.split('-')[0]),
       description: form.description.trim(),
       eur,
-      bgn: Math.round(eur * R * 100) / 100,
       manual: true,
     })
     setAdding(false)
@@ -75,7 +77,6 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
     <div className="exp-wrap">
       {years.map(year => {
         const entries = byYear[year]
-        const totalBgn = entries.reduce((s, e) => s + e.bgn, 0)
         const totalEur = entries.reduce((s, e) => s + e.eur, 0)
 
         return (
@@ -84,7 +85,6 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
             <div className="fytitle">
               {year}
               <span className="ytag y-now">{fmtMoney(totalEur)} €</span>
-              <span className="ytag y-nxt">{fmtMoney(totalBgn)} лв</span>
             </div>
 
             {/* ── Year table ── */}
@@ -95,7 +95,6 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
                     <tr>
                       <th>Дата</th>
                       <th>Описание</th>
-                      <th className="exp-num-hdr">Стойност (лв)</th>
                       <th className="exp-num-hdr">Стойност (€)</th>
                       <th style={{ width: '2rem' }} />
                     </tr>
@@ -103,19 +102,38 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
                   <tbody>
                     {entries.map(e => (
                       <tr key={e.id} className={e.manual ? 'exp-manual' : undefined}>
-                        <td className="exp-date">{fmtExpDate(e.date)}</td>
+                        <td className="exp-date">
+                          <input
+                            type="month"
+                            className="ecell"
+                            defaultValue={e.date}
+                            key={`${e.id}-date`}
+                            onBlur={ev => { if (ev.target.value && ev.target.value !== e.date) onUpdateField(e, 'date', ev.target.value) }}
+                          />
+                        </td>
                         <td className="iname">
                           <input
                             type="text"
                             className="ecell"
                             defaultValue={e.description}
                             key={`${e.id}-desc`}
-                            onBlur={ev => { if (ev.target.value !== e.description) onUpdateDescription(e, ev.target.value) }}
+                            onBlur={ev => { if (ev.target.value !== e.description) onUpdateField(e, 'description', ev.target.value) }}
                             onKeyDown={ev => ev.key === 'Enter' && ev.target.blur()}
                           />
                         </td>
-                        <td className="exp-num">{fmtMoney(e.bgn)}</td>
-                        <td className="exp-num">{fmtMoney(e.eur)}</td>
+                        <td className="exp-num">
+                          <input
+                            type="number"
+                            className="ecell"
+                            defaultValue={e.eur}
+                            key={`${e.id}-eur`}
+                            min="0"
+                            step="0.01"
+                            style={{ textAlign: 'right', minWidth: '70px' }}
+                            onBlur={ev => { const v = parseFloat(ev.target.value); if (!isNaN(v) && v !== e.eur) onUpdateField(e, 'eur', ev.target.value) }}
+                            onKeyDown={ev => ev.key === 'Enter' && ev.target.blur()}
+                          />
+                        </td>
                         <td className="c">
                           <button className="ibtn del" onClick={() => handleDelete(e)} title="Изтрий">✕</button>
                         </td>
@@ -125,7 +143,6 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
                   <tfoot>
                     <tr className="exp-total-row">
                       <td colSpan={2}>Общо за {year}</td>
-                      <td className="exp-num">{fmtMoney(totalBgn)}</td>
                       <td className="exp-num">{fmtMoney(totalEur)}</td>
                       <td />
                     </tr>
@@ -180,11 +197,6 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
       <div className="exp-grand">
         <div className="exp-grand-label">Общо за всички години</div>
         <div className="exp-grand-vals">
-          <div className="exp-grand-item">
-            <span className="exp-grand-lbl">лв</span>
-            <span className="exp-grand-num">{fmtMoney(grandBgn)}</span>
-          </div>
-          <div className="exp-grand-sep">/</div>
           <div className="exp-grand-item">
             <span className="exp-grand-lbl">€</span>
             <span className="exp-grand-num">{fmtMoney(grandEur)}</span>
