@@ -332,18 +332,28 @@ export default function App() {
     if (!email) return
     setSyncBusy(true)
     try {
-      if (isAnon) {
-        // Upgrade anonymous account to email account in-place.
-        // The user_id stays the same, so all data is preserved.
-        const { error } = await supabase.auth.updateUser({ email })
-        if (error) throw error
-      } else {
-        // Sign in on a new device using an existing email account.
+      if (!isAnon) {
+        // Already a named user on this device — sign in on another device.
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: { shouldCreateUser: false },
         })
         if (error) throw error
+      } else {
+        // Anonymous session (new browser or device).
+        // Try OTP first: if this email already has an account, send magic link.
+        // If email is not registered yet, upgrade the anonymous account instead.
+        const { error: otpError } = await supabase.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: false },
+        })
+        if (!otpError) {
+          // Existing account — magic link sent, data will load on confirmation.
+        } else {
+          // Email not found — link this anonymous session to a new email account.
+          const { error: updateError } = await supabase.auth.updateUser({ email })
+          if (updateError) throw updateError
+        }
       }
       setSyncSent(true)
     } catch (err) {
