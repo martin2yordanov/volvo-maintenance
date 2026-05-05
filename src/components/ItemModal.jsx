@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { CAT_ORDER } from '../lib/data'
 
 const EMPTY = {
   name: '', cat: '', intervalKm: '', intervalYr: '',
@@ -34,7 +35,7 @@ export default function ItemModal({ item, onSave, onClose }) {
     if (!form.name.trim()) { alert('Въведи наименование.'); return }
     onSave({
       name:       form.name.trim(),
-      cat:        form.cat.trim() || 'Друго',
+      cat:        form.cat || CAT_ORDER[0],
       note:       form.note.trim(),
       intervalKm: parseInt(form.intervalKm)    || null,
       intervalYr: parseFloat(form.intervalYr)  || null,
@@ -63,8 +64,9 @@ export default function ItemModal({ item, onSave, onClose }) {
 
         <div className="fg">
           <label>Категория</label>
-          <input type="text" value={form.cat} onChange={e => set('cat', e.target.value)}
-            placeholder="напр. Двигател" />
+          <select value={form.cat || CAT_ORDER[0]} onChange={e => set('cat', e.target.value)}>
+            {CAT_ORDER.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
 
         <div className="frow">

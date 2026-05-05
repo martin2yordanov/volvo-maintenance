@@ -4,7 +4,6 @@ import { DEFAULTS, CAT_ORDER, CAT_ICON, calcNextDue, STATUS_ORDER, defaultCmp, i
 import MainTable from './components/MainTable.jsx'
 import NeedsAttention from './components/NeedsAttention.jsx'
 import ThisYear from './components/ThisYear.jsx'
-import Forecast from './components/Forecast.jsx'
 import Expenses from './components/Expenses.jsx'
 import ItemModal from './components/ItemModal.jsx'
 import Toast from './components/Toast.jsx'
@@ -595,7 +594,6 @@ export default function App() {
               { id: 'main', label: '📋 Всички' },
               { id: 'attn', label: '⚠️ Нужно внимание', badge: urgentCount },
               { id: 'year', label: '📅 Тази Година' },
-              { id: 'fore', label: '🔮 5-Год. Прогноза' },
               { id: 'exp',  label: '💸 Разходи' },
             ].map(tab => (
               <button
@@ -658,10 +656,6 @@ export default function App() {
 
         {activeTab === 'year' && (
           <ThisYear items={items} odo={odo} />
-        )}
-
-        {activeTab === 'fore' && (
-          <Forecast items={items} odo={odo} />
         )}
 
         {activeTab === 'exp' && (

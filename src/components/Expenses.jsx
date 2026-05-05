@@ -3,9 +3,47 @@ import { EXPENSES, fmtExpDate, fmtMoney } from '../lib/expenses'
 
 const R = 1.95583
 
+// Per-year sort state: { [year]: { col, dir } }
+// Default: date descending (most recent first)
+const DEFAULT_SORT = { col: 'date', dir: -1 }
+
+function sortEntries(entries, { col, dir }) {
+  return [...entries].sort((a, b) => {
+    let av = a[col], bv = b[col]
+    if (col === 'eur') { av = Number(av); bv = Number(bv) }
+    if (av < bv) return -1 * dir
+    if (av > bv) return  1 * dir
+    return 0
+  })
+}
+
 export default function Expenses({ items = [], manualExpenses = [], onAddExpense, onDeleteExpense, onUpdateField }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ date: '', description: '', eur: '' })
+  const [yearSort, setYearSort] = useState({})   // { [year]: { col, dir } }
+
+  function getSort(year) { return yearSort[year] || DEFAULT_SORT }
+
+  function toggleSort(year, col) {
+    const cur = getSort(year)
+    setYearSort(s => ({
+      ...s,
+      [year]: { col, dir: cur.col === col ? cur.dir * -1 : -1 }
+    }))
+  }
+
+  function SortTh({ year, col, label, className }) {
+    const { col: sc, dir } = getSort(year)
+    const active = sc === col
+    return (
+      <th
+        className={['sortable', className, active ? (dir === 1 ? 'sort-asc' : 'sort-desc') : ''].filter(Boolean).join(' ')}
+        onClick={() => toggleSort(year, col)}
+      >
+        {label}
+      </th>
+    )
+  }
 
   // Dynamic entries from maintenance items that have a cost and a date set
   const itemEntries = items
@@ -76,8 +114,9 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
   return (
     <div className="exp-wrap">
       {years.map(year => {
-        const entries = byYear[year]
-        const totalEur = entries.reduce((s, e) => s + e.eur, 0)
+        const rawEntries = byYear[year]
+        const entries = sortEntries(rawEntries, getSort(year))
+        const totalEur = rawEntries.reduce((s, e) => s + e.eur, 0)
 
         return (
           <div key={year} className="exp-year-block">
@@ -93,9 +132,9 @@ export default function Expenses({ items = [], manualExpenses = [], onAddExpense
                 <table>
                   <thead>
                     <tr>
-                      <th>Дата</th>
-                      <th>Описание</th>
-                      <th className="exp-num-hdr">Стойност (€)</th>
+                      <SortTh year={year} col="date"        label="Дата" />
+                      <SortTh year={year} col="description" label="Описание" />
+                      <SortTh year={year} col="eur"         label="Стойност (€)" className="exp-num-hdr" />
                       <th style={{ width: '2rem' }} />
                     </tr>
                   </thead>
