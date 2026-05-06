@@ -80,26 +80,29 @@ body {
 .btn-pri:hover { background: var(--acc2); border-color: var(--acc2); box-shadow: 0 2px 8px rgba(0,115,234,.3); }
 .btn-red   { background: var(--surf); color: var(--red); border-color: rgba(226,68,92,.3); }
 .btn-red:hover { background: var(--red-bg); }
-.btn-sync  { background: var(--surf); color: var(--ok); border-color: rgba(0,200,117,.35); }
-.btn-sync:hover { background: var(--ok-bg); }
-.btn-sync.syncing { opacity: .55; pointer-events: none; }
 
-/* ── Odometer bar ─────────────────────────────────────────────────────── */
-.odo-bar { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; padding-bottom: .6rem; }
-.odo-lbl  { font-size: .62rem; color: var(--txt3); font-family: var(--fm); text-transform: uppercase; letter-spacing: .8px; }
-.odo-inp  {
-  font-family: var(--fm); font-size: .92rem; font-weight: 600; color: var(--acc);
-  background: transparent; border: none;
-  border-bottom: 1.5px solid var(--bord2);
-  padding: .1rem .3rem; width: 110px; outline: none; text-align: center;
-  transition: border-color .14s;
+/* ── Odo inline card input ────────────────────────────────────────────── */
+.odo-card-inp {
+  font-family: var(--fh); font-size: 1.5rem; font-weight: 800;
+  letter-spacing: -1.5px; line-height: 1; color: var(--acc);
+  background: transparent; border: none; outline: none;
+  width: 100%; padding: 0;
+  -moz-appearance: textfield;
 }
-.odo-inp:focus { border-color: var(--acc); }
-.odo-unit { font-size: .62rem; color: var(--txt3); font-family: var(--fm); }
-.sync-status { font-size: .6rem; font-family: var(--fm); margin-left: .5rem; }
-.sync-status.ok   { color: var(--ok); }
-.sync-status.err  { color: var(--red); }
-.sync-status.busy { color: var(--txt3); }
+.odo-card-inp::-webkit-outer-spin-button,
+.odo-card-inp::-webkit-inner-spin-button { -webkit-appearance: none; }
+.odo-card-inp::placeholder { color: var(--txt3); font-weight: 500; font-size: 1.1rem; letter-spacing: 0; }
+
+/* ── Sync status dot ──────────────────────────────────────────────────── */
+.sync-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  flex-shrink: 0; align-self: center;
+  animation: none;
+}
+.sync-dot-saving { background: var(--warn); animation: pulse .8s ease infinite; }
+.sync-dot-saved  { background: var(--ok); }
+.sync-dot-error  { background: var(--red); }
+@keyframes pulse { 0%,100%{ opacity: 1 } 50%{ opacity: .35 } }
 
 /* ── Tabs ─────────────────────────────────────────────────────────────── */
 .tabs { display: flex; gap: 2px; }

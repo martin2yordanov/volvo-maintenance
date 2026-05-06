@@ -531,6 +531,9 @@ export default function App() {
             <button className="btn btn-ghost" onClick={() => impRef.current?.click()}>↓ Импорт</button>
             <button className="btn btn-red"   onClick={doReset}>⟳ Нулиране</button>
             <input ref={impRef} type="file" id="imp" accept=".json" onChange={doImport} />
+            {syncStatus !== 'idle' && (
+              <span className={`sync-dot sync-dot-${syncStatus}`} title={syncLabel}/>
+            )}
 
             {/* ── Cross-device sync ── */}
             <div className="sync-divider" />
@@ -570,27 +573,7 @@ export default function App() {
           </div>
         </div>
 
-        <div className="hdr-bottom">
-          <div className="odo-bar">
-            <span className="odo-lbl">Километраж:</span>
-            <input
-              type="number"
-              className="odo-inp"
-              placeholder="——"
-              value={odo ?? ''}
-              onChange={e => updateOdo(e.target.value ? parseInt(e.target.value) : null)}
-            />
-            <span className="odo-unit">км</span>
-            <button
-              className={`btn btn-sync${syncStatus === 'saving' ? ' syncing' : ''}`}
-              onClick={doSave}
-              disabled={syncStatus === 'saving'}
-            >
-              {syncStatus === 'saving' ? '⟳ Запазване...' : syncStatus === 'saved' ? '✓ Запазено' : '💾 Запази'}
-            </button>
-          </div>
-
-          <div className="tabs">
+        <div className="tabs">
             {[
               { id: 'main', label: '📋 Всички' },
               { id: 'attn', label: '⚠️ Нужно внимание', badge: urgentCount },
@@ -609,7 +592,6 @@ export default function App() {
               </button>
             ))}
           </div>
-        </div>
       </header>
 
       {/* ── Content ────────────────────────────────────────────────────────── */}
@@ -622,6 +604,7 @@ export default function App() {
               odo={odo}
               activeFilter={statusFilter}
               onFilter={s => setStatusFilter(f => f === s ? null : s)}
+              onOdoChange={updateOdo}
             />
             <MainTable
               grouped={grouped}

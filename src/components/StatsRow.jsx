@@ -1,6 +1,6 @@
 import { calcNextDue } from '../lib/data'
 
-export default function StatsRow({ items, odo, activeFilter, onFilter }) {
+export default function StatsRow({ items, odo, activeFilter, onFilter, onOdoChange }) {
   let ok = 0, warn = 0, red = 0, unk = 0
   items.forEach(i => {
     if (i.replaced) return
@@ -28,8 +28,15 @@ export default function StatsRow({ items, odo, activeFilter, onFilter }) {
       {card('warn', 's-warn', warn, 'Предстоящи')}
       {card('ok',   's-ok',   ok,   'В ред')}
       {card('unk',  '',       unk,  'Без история', { borderColor: 'var(--bord2)' })}
-      <div className="scard s-acc">
-        <div className="sval">{odo ? odo.toLocaleString('bg') : '—'}</div>
+      <div className="scard s-acc" style={{ cursor: 'text', flexDirection: 'column', alignItems: 'flex-start', gap: '.1rem' }}>
+        <input
+          type="number"
+          className="odo-card-inp"
+          value={odo ?? ''}
+          onChange={e => onOdoChange(e.target.value ? parseInt(e.target.value) : null)}
+          placeholder="——"
+          title="Въведи текущ километраж"
+        />
         <div className="slbl">Текущ км</div>
       </div>
     </div>
