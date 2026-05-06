@@ -258,11 +258,39 @@ tr.cat-sep td {
 
 /* ── Hidden / replaced bar ────────────────────────────────────────────── */
 .hidden-bar {
-  padding: .38rem 1rem; border-bottom: 1px solid var(--bord);
+  padding: .38rem .9rem; border-bottom: 1px solid var(--bord);
   background: var(--surf2);
-  display: flex; align-items: center; gap: .45rem; flex-wrap: wrap;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .5rem; flex-wrap: wrap;
 }
+.hidden-bar-left { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
 .btn-sm { font-size: .68rem; padding: .26rem .6rem; }
+
+/* ── Table search ─────────────────────────────────────────────────────── */
+.tbl-search {
+  display: flex; align-items: center; gap: .3rem;
+  background: var(--surf); border: 1.5px solid var(--bord2);
+  border-radius: 6px; padding: .22rem .5rem .22rem .38rem;
+  transition: border-color .14s, box-shadow .14s;
+}
+.tbl-search:focus-within {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--acc-bg);
+}
+.tbl-search-icon { font-size: .72rem; line-height: 1; pointer-events: none; opacity: .5; }
+.tbl-search-inp {
+  font-family: var(--fh); font-size: .75rem; color: var(--txt);
+  background: transparent; border: none; outline: none;
+  width: 160px; transition: width .2s;
+}
+.tbl-search-inp::placeholder { color: var(--txt3); }
+.tbl-search-inp:focus { width: 200px; }
+.tbl-search-clear {
+  background: none; border: none; cursor: pointer;
+  color: var(--txt3); font-size: .65rem; line-height: 1;
+  padding: 0 .1rem; transition: color .12s;
+}
+.tbl-search-clear:hover { color: var(--red); }
 
 /* ── Cost cell ────────────────────────────────────────────────────────── */
 .cost-cell { display: flex; align-items: center; gap: .2rem; }

@@ -39,7 +39,7 @@ function SortTh({ col, label, currentSort, grouped, onSort, center }) {
   )
 }
 
-export default function MainTable({ items, odo, grouped, sortState, onSort, onMark, onUpd, onEdit, onDel, onAdd, showHidden, hiddenCount, onHide, onToggleHidden, showReplaced, replacedCount, onToggleReplaced }) {
+export default function MainTable({ items, odo, grouped, sortState, onSort, onMark, onUpd, onEdit, onDel, onAdd, showHidden, hiddenCount, onHide, onToggleHidden, showReplaced, replacedCount, onToggleReplaced, searchQuery, onSearch }) {
   const showCatHeaders = grouped
 
   const rows = []
@@ -150,8 +150,8 @@ export default function MainTable({ items, odo, grouped, sortState, onSort, onMa
 
   return (
     <div className="tbl-wrap">
-      {(hiddenCount > 0 || replacedCount > 0) && (
-        <div className="hidden-bar">
+      <div className="hidden-bar">
+        <div className="hidden-bar-left">
           {replacedCount > 0 && (
             <button className="btn btn-ghost btn-sm" onClick={onToggleReplaced}>
               {showReplaced ? `✓ Скрий одобрените (${replacedCount})` : `✓ Покажи одобрени (${replacedCount})`}
@@ -163,7 +163,20 @@ export default function MainTable({ items, odo, grouped, sortState, onSort, onMa
             </button>
           )}
         </div>
-      )}
+        <div className="tbl-search">
+          <span className="tbl-search-icon">🔍</span>
+          <input
+            type="text"
+            className="tbl-search-inp"
+            placeholder="Търсене…"
+            value={searchQuery}
+            onChange={e => onSearch(e.target.value)}
+          />
+          {searchQuery && (
+            <button className="tbl-search-clear" onClick={() => onSearch('')} title="Изчисти">✕</button>
+          )}
+        </div>
+      </div>
       <div className="tbl-scroll">
         <table>
           <thead>

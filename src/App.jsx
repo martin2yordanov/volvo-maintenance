@@ -28,6 +28,7 @@ export default function App() {
   const [grouped, setGrouped]     = useState(true)  // true = category view, false = sorted view
   const [showHidden, setShowHidden] = useState(false)
   const [showReplaced, setShowReplaced] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [manualExpenses, setManualExpenses] = useState([])
   // ─── Cross-device sync state ─────────────────────────────────────────────
   const [isAnon, setIsAnon]           = useState(true)
@@ -625,7 +626,16 @@ export default function App() {
             <MainTable
               grouped={grouped}
               items={sortedItems().filter(i => {
-                if (i.hidden && !showHidden) return false
+                const q = searchQuery.trim().toLowerCase()
+                if (q) {
+                  const hit = i.name?.toLowerCase().includes(q) ||
+                              i.note?.toLowerCase().includes(q) ||
+                              i.cat?.toLowerCase().includes(q)
+                  if (!hit) return false
+                  // searching overrides the hidden filter — show matching hidden items
+                } else {
+                  if (i.hidden && !showHidden) return false
+                }
                 if (i.replaced && !showReplaced) return false
                 if (!statusFilter) return true
                 if (i.replaced) return statusFilter === 'ok'
@@ -646,6 +656,8 @@ export default function App() {
               showReplaced={showReplaced}
               replacedCount={items.filter(i => i.replaced).length}
               onToggleReplaced={() => setShowReplaced(s => !s)}
+              searchQuery={searchQuery}
+              onSearch={setSearchQuery}
             />
           </>
         )}
