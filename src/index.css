@@ -408,6 +408,48 @@ tr.cat-sep td {
 .frow { display: grid; grid-template-columns: 1fr 1fr; gap: .65rem; }
 .mact { display: flex; justify-content: flex-end; gap: .42rem; margin-top: 1rem; }
 
+/* ── Car Setup ────────────────────────────────────────────────────────── */
+.setup-screen {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--bg); padding: 1.5rem;
+}
+.setup-modal { max-width: 420px !important; }
+.setup-sub {
+  font-size: .82rem; color: var(--txt2); margin-bottom: 1.4rem; line-height: 1.5;
+}
+.setup-fields { display: flex; flex-direction: column; gap: .75rem; margin-bottom: 1.1rem; }
+.form-row { display: flex; flex-direction: column; gap: .28rem; }
+.form-row label {
+  font-size: .6rem; font-family: var(--fh); text-transform: uppercase;
+  letter-spacing: .7px; color: var(--txt3); font-weight: 600;
+}
+.setup-error {
+  font-size: .78rem; color: var(--red); margin-bottom: .9rem;
+  background: var(--red-bg); padding: .5rem .75rem; border-radius: var(--rs);
+}
+.setup-actions { display: flex; gap: .5rem; margin-top: .5rem; }
+.setup-hint {
+  font-size: .74rem; color: var(--txt3); margin-top: .9rem;
+  text-align: center; line-height: 1.5;
+}
+.spinner-sm {
+  display: inline-block; width: .9rem; height: .9rem;
+  border: 2px solid rgba(255,255,255,.4); border-top-color: #fff;
+  border-radius: 50%; animation: spin .75s linear infinite;
+  vertical-align: middle; margin-right: .35rem;
+}
+.car-initial {
+  width: 2.25rem; height: 2.25rem; border-radius: 50%;
+  background: var(--acc); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem; font-weight: 800;
+}
+.car-setup-link {
+  font-size: .72rem; color: var(--acc); cursor: pointer;
+  text-decoration: underline; text-underline-offset: 2px;
+}
+.car-setup-link:hover { color: var(--acc2); }
+
 /* ── Toast ────────────────────────────────────────────────────────────── */
 .toast {
   position: fixed; bottom: 1.3rem; right: 1.3rem;

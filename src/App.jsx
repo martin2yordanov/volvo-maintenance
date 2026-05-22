@@ -8,6 +8,7 @@ import Expenses from './components/Expenses.jsx'
 import ItemModal from './components/ItemModal.jsx'
 import Toast from './components/Toast.jsx'
 import StatsRow from './components/StatsRow.jsx'
+import CarSetup from './components/CarSetup.jsx'
 import { KNOWN_COSTS } from './lib/expenses'
 
 const KMY = 15000
@@ -30,6 +31,8 @@ export default function App() {
   const [showReplaced, setShowReplaced] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [manualExpenses, setManualExpenses] = useState([])
+  const [carInfo, setCarInfo]       = useState(null)  // { make, model, year }
+  const [showSetup, setShowSetup]   = useState(false)
   // ─── Cross-device sync state ─────────────────────────────────────────────
   const [isAnon, setIsAnon]           = useState(true)
   const [userEmail, setUserEmail]     = useState(null)
@@ -143,6 +146,9 @@ export default function App() {
         const raw = data.items
         const maintenanceRaw = Array.isArray(raw) ? raw : (raw.maintenance || [])
         const loadedExpenses = Array.isArray(raw) ? [] : (raw.expenses || [])
+        const loadedCarInfo  = Array.isArray(raw) ? null : (raw.carInfo || null)
+
+        if (loadedCarInfo) setCarInfo(loadedCarInfo)
 
         if (maintenanceRaw.length > 0) {
           const migrated = maintenanceRaw.map(item => ({
@@ -156,18 +162,16 @@ export default function App() {
           setOdo(data.odometer || null)
           manualExpensesRef.current = loadedExpenses
           setManualExpenses(loadedExpenses)
+        } else if (loadedCarInfo) {
+          // Had a car set up but no items — show setup to regenerate
+          setShowSetup(true)
         } else {
-          const defaults = JSON.parse(JSON.stringify(DEFAULTS))
-          setItems(defaults)
-          setOdo(null)
-          await saveToDb(uid, defaults, null, [])
+          // Brand new user — show car setup instead of seeding Volvo defaults
+          setShowSetup(true)
         }
       } else {
-        // First time: seed with defaults, then save to DB
-        const defaults = JSON.parse(JSON.stringify(DEFAULTS))
-        setItems(defaults)
-        setOdo(null)
-        await saveToDb(uid, defaults, null, [])
+        // First time: show car setup
+        setShowSetup(true)
       }
     } catch (err) {
       console.error('Load error:', err)
@@ -181,14 +185,13 @@ export default function App() {
   }
 
   // ─── Save to Supabase ────────────────────────────────────────────────────
-  async function saveToDb(uid, itemsToSave, odoToSave, expensesToSave) {
+  async function saveToDb(uid, itemsToSave, odoToSave, expensesToSave, carInfoToSave) {
     if (!uid) return
     setSyncStatus('saving')
-    // Store maintenance items and expenses together in the items JSONB column
-    // to avoid requiring a schema migration for a separate expenses column.
     const itemsPayload = {
       maintenance: itemsToSave,
       expenses: expensesToSave ?? manualExpensesRef.current,
+      carInfo: carInfoToSave ?? carInfo,
     }
     try {
       const { error } = await supabase
@@ -495,6 +498,14 @@ export default function App() {
     : ''
   const syncClass = syncStatus === 'saved' ? 'ok' : syncStatus === 'error' ? 'err' : 'busy'
 
+  function handleCarGenerated(newItems, newCarInfo) {
+    setCarInfo(newCarInfo)
+    setItems(newItems)
+    setShowSetup(false)
+    saveToDb(userId, newItems, odo, manualExpensesRef.current, newCarInfo)
+    showToast(`✓ Генерирана таблица за ${newCarInfo.make} ${newCarInfo.model}`)
+  }
+
   // ─── Loading screen ───────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -505,6 +516,11 @@ export default function App() {
     )
   }
 
+  // ─── First-run setup screen ───────────────────────────────────────────────
+  if (showSetup && !carInfo) {
+    return <CarSetup onGenerated={handleCarGenerated} existingCarInfo={null} />
+  }
+
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <>
@@ -512,17 +528,14 @@ export default function App() {
       <header className="hdr">
         <div className="hdr-top">
           <div className="car-id">
-            <div className="vlogo">
-                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" width="36" height="36">
-                  <circle cx="23" cy="27" r="16" stroke="white" strokeWidth="2.2"/>
-                  <text x="23" y="31" textAnchor="middle" fill="white" fontSize="7" fontWeight="800" fontFamily="'Syne',Arial,sans-serif" letterSpacing="1">VOLVO</text>
-                  <line x1="35" y1="14" x2="43" y2="6" stroke="white" strokeWidth="2.2" strokeLinecap="round"/>
-                  <polyline points="38,6 43,6 43,11" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </div>
+            <div className="vlogo car-initial">
+              {carInfo ? carInfo.make[0].toUpperCase() : '🚗'}
+            </div>
             <div>
-              <h1>Volvo V70 &middot; 2003</h1>
-              <span>D5244T &middot; 2.4D &middot; 163 к.с. &middot; Дизел</span>
+              <h1>
+                {carInfo ? `${carInfo.make} ${carInfo.model} · ${carInfo.year}` : 'Моят автомобил'}
+              </h1>
+              <span className="car-setup-link" onClick={() => setShowSetup(true)}>Смени автомобил</span>
             </div>
           </div>
           <div className="hdr-btns">
@@ -669,6 +682,15 @@ export default function App() {
 
       {/* ── Toast ──────────────────────────────────────────────────────────── */}
       <Toast msg={toast.msg} on={toast.on} />
+
+      {/* ── Change car modal ───────────────────────────────────────────────── */}
+      {showSetup && carInfo && (
+        <CarSetup
+          onGenerated={handleCarGenerated}
+          existingCarInfo={carInfo}
+          onClose={() => setShowSetup(false)}
+        />
+      )}
     </>
   )
 }
