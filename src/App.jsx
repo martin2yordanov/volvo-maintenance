@@ -9,6 +9,7 @@ import ItemModal from './components/ItemModal.jsx'
 import Toast from './components/Toast.jsx'
 import StatsRow from './components/StatsRow.jsx'
 import CarSetup from './components/CarSetup.jsx'
+import CarLogo from './components/CarLogo.jsx'
 import { KNOWN_COSTS } from './lib/expenses'
 
 const KMY = 15000
@@ -529,7 +530,7 @@ export default function App() {
         <div className="hdr-top">
           <div className="car-id">
             <div className="vlogo car-initial">
-              {carInfo ? carInfo.make[0].toUpperCase() : '🚗'}
+              <CarLogo make={carInfo?.make} />
             </div>
             <div>
               <h1>
