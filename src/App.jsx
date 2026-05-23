@@ -10,6 +10,9 @@ import Toast from './components/Toast.jsx'
 import StatsRow from './components/StatsRow.jsx'
 import CarSetup from './components/CarSetup.jsx'
 import CarLogo from './components/CarLogo.jsx'
+import ServiceLog from './components/ServiceLog.jsx'
+import ServiceLogModal from './components/ServiceLogModal.jsx'
+import PrintReport from './components/PrintReport.jsx'
 import { KNOWN_COSTS } from './lib/expenses'
 
 const KMY = 15000
@@ -32,6 +35,9 @@ export default function App() {
   const [showReplaced, setShowReplaced] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [manualExpenses, setManualExpenses] = useState([])
+  const [serviceLog, setServiceLog]             = useState([])
+  const [serviceModalOpen, setServiceModalOpen] = useState(false)
+  const [editServiceEntry, setEditServiceEntry] = useState(null)
   const [carInfo, setCarInfo]       = useState(null)  // { make, model, year }
   const [showSetup, setShowSetup]   = useState(false)
   // ─── Cross-device sync state ─────────────────────────────────────────────
@@ -48,6 +54,7 @@ export default function App() {
   const userIdRef         = useRef(null)   // tracks current uid for stale-closure checks
   const isLoadingRef      = useRef(false)  // prevents concurrent loadData calls
   const manualExpensesRef = useRef([])     // keeps expenses current for debounced saves
+  const serviceLogRef     = useRef([])     // keeps service log current for debounced saves
 
   // ─── Auth: anonymous sign-in + cross-device sync listener ──────────────────
   useEffect(() => {
@@ -146,8 +153,11 @@ export default function App() {
         // current = { maintenance: [...], expenses: [...] }
         const raw = data.items
         const maintenanceRaw = Array.isArray(raw) ? raw : (raw.maintenance || [])
-        const loadedExpenses = Array.isArray(raw) ? [] : (raw.expenses || [])
-        const loadedCarInfo  = Array.isArray(raw) ? null : (raw.carInfo || null)
+        const loadedExpenses   = Array.isArray(raw) ? [] : (raw.expenses   || [])
+        const loadedServiceLog = Array.isArray(raw) ? [] : (raw.serviceLog || [])
+        const loadedCarInfo    = Array.isArray(raw) ? null : (raw.carInfo  || null)
+        serviceLogRef.current  = loadedServiceLog
+        setServiceLog(loadedServiceLog)
 
         if (loadedCarInfo) setCarInfo(loadedCarInfo)
 
@@ -193,6 +203,7 @@ export default function App() {
       maintenance: itemsToSave,
       expenses: expensesToSave ?? manualExpensesRef.current,
       carInfo: carInfoToSave ?? carInfo,
+      serviceLog: serviceLogRef.current,
     }
     try {
       const { error } = await supabase
@@ -343,6 +354,33 @@ export default function App() {
       setManualExpenses(updated)
       saveToDb(userId, items, odo, updated)
     }
+  }
+
+  // ─── Service Log CRUD ────────────────────────────────────────────────────
+  function addServiceEntry(data) {
+    const entry = { ...data, id: Date.now() }
+    const updated = [entry, ...serviceLogRef.current]
+    serviceLogRef.current = updated
+    setServiceLog(updated)
+    saveToDb(userId, items, odo, manualExpensesRef.current, carInfo)
+    showToast('✓ Записът е добавен')
+  }
+
+  function updateServiceEntry(data) {
+    const updated = serviceLogRef.current.map(e => e.id === editServiceEntry.id ? { ...e, ...data } : e)
+    serviceLogRef.current = updated
+    setServiceLog(updated)
+    saveToDb(userId, items, odo, manualExpensesRef.current, carInfo)
+    showToast('Записът е обновен')
+  }
+
+  function deleteServiceEntry(id) {
+    if (!confirm('Изтрий този запис?')) return
+    const updated = serviceLogRef.current.filter(e => e.id !== id)
+    serviceLogRef.current = updated
+    setServiceLog(updated)
+    saveToDb(userId, items, odo, manualExpensesRef.current, carInfo)
+    showToast('Записът е изтрит')
   }
 
   function doReset() {
@@ -540,6 +578,7 @@ export default function App() {
             </div>
           </div>
           <div className="hdr-btns">
+            <button className="print-btn" onClick={() => window.print()}>🖨 Продажба</button>
             <button className="btn btn-ghost" onClick={() => { setEditItem(null); setModalOpen(true) }}>＋ Добави</button>
             <button className="btn btn-ghost" onClick={doExport}>↑ Експорт</button>
             <button className="btn btn-ghost" onClick={() => impRef.current?.click()}>↓ Импорт</button>
@@ -593,6 +632,7 @@ export default function App() {
               { id: 'attn', label: '⚠️ Нужно внимание', badge: urgentCount },
               { id: 'year', label: '📅 Тази Година' },
               { id: 'exp',  label: '💸 Разходи' },
+              { id: 'slog', label: '🔧 Сервиз' },
             ].map(tab => (
               <button
                 key={tab.id}
@@ -670,6 +710,17 @@ export default function App() {
         {activeTab === 'exp' && (
           <Expenses items={items} manualExpenses={manualExpenses} onAddExpense={addExpense} onDeleteExpense={deleteExpense} onUpdateField={updateExpenseField} />
         )}
+
+        {activeTab === 'slog' && (
+          <>
+            <ServiceLog
+              entries={serviceLog}
+              onAdd={() => { setEditServiceEntry(null); setServiceModalOpen(true) }}
+              onEdit={entry => { setEditServiceEntry(entry); setServiceModalOpen(true) }}
+              onDelete={deleteServiceEntry}
+            />
+          </>
+        )}
       </div>
 
       {/* ── Modal ──────────────────────────────────────────────────────────── */}
@@ -678,6 +729,20 @@ export default function App() {
           item={editItem}
           onSave={saveItem}
           onClose={() => { setModalOpen(false); setEditItem(null) }}
+        />
+      )}
+
+      {/* ── Service Log Modal ──────────────────────────────────────────────── */}
+      {serviceModalOpen && (
+        <ServiceLogModal
+          entry={editServiceEntry}
+          onSave={data => {
+            if (editServiceEntry) updateServiceEntry(data)
+            else addServiceEntry(data)
+            setServiceModalOpen(false)
+            setEditServiceEntry(null)
+          }}
+          onClose={() => { setServiceModalOpen(false); setEditServiceEntry(null) }}
         />
       )}
 
@@ -692,6 +757,17 @@ export default function App() {
           onClose={() => setShowSetup(false)}
         />
       )}
+
+      {/* ── Print Report ───────────────────────────────────────────────────── */}
+      <PrintReport
+        carInfo={carInfo}
+        odo={odo}
+        items={items}
+        serviceLog={serviceLog}
+        manualExpenses={manualExpenses}
+        calcNextDue={calcNextDue}
+        CAT_ORDER={CAT_ORDER}
+      />
     </>
   )
 }
