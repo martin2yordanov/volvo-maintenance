@@ -21,7 +21,9 @@ export default function App() {
   // ─── State ──────────────────────────────────────────────────────────────────
   const [items, setItems]         = useState([])
   const [odo, setOdo]             = useState(null)
-  const [activeTab, setActiveTab] = useState('main')
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('activeTab') || 'main')
+  const [urgentBannerDismissed, setUrgentBannerDismissed] = useState(() => !!sessionStorage.getItem('bannerDismissed'))
+  const [returnBanner, setReturnBanner] = useState(false)
   const [sortState, setSortState] = useState({ col: null, dir: 1 })
   const [modalOpen, setModalOpen] = useState(false)
   const [editItem, setEditItem]   = useState(null)
@@ -530,6 +532,31 @@ export default function App() {
     return s === 'red' || s === 'warn'
   }).length
 
+  const overdueCount = items.filter(i => !i.replaced && calcNextDue(i, odo).status === 'red').length
+
+  // ─── Document title reflects urgency ─────────────────────────────────────
+  useEffect(() => {
+    const name = carInfo ? `${carInfo.make} ${carInfo.model}` : 'Сервизна книжка'
+    document.title = urgentCount > 0 ? `(${urgentCount}) ${name}` : name
+  }, [urgentCount, carInfo])
+
+  // ─── Persist active tab ───────────────────────────────────────────────────
+  function switchTab(id) {
+    setActiveTab(id)
+    localStorage.setItem('activeTab', id)
+  }
+
+  // ─── Return-user banner ───────────────────────────────────────────────────
+  useEffect(() => {
+    if (loading || items.length === 0) return
+    const last = localStorage.getItem('lastVisit')
+    const now  = Date.now()
+    localStorage.setItem('lastVisit', now)
+    if (last && now - parseInt(last) > 7 * 24 * 60 * 60 * 1000 && urgentCount > 0) {
+      setReturnBanner(true)
+    }
+  }, [loading, items.length])
+
   // ─── Sync status label ────────────────────────────────────────────────────
   const syncLabel = syncStatus === 'saving' ? '⟳ Запазване...'
     : syncStatus === 'saved' ? '✓ Запазено'
@@ -637,7 +664,7 @@ export default function App() {
               <button
                 key={tab.id}
                 className={`tab${activeTab === tab.id ? ' on' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => switchTab(tab.id)}
               >
                 {tab.label}
                 {tab.badge > 0 && (
@@ -650,6 +677,28 @@ export default function App() {
 
       {/* ── Content ────────────────────────────────────────────────────────── */}
       <div className="content">
+
+        {/* Return-user banner */}
+        {returnBanner && (
+          <div className="retention-banner retention-banner-warn">
+            <span>👋 Добре дошъл обратно! Имаш <strong>{urgentCount}</strong> позиц{urgentCount === 1 ? 'ия' : 'ии'}, които изискват внимание.</span>
+            <div className="retention-banner-actions">
+              <button className="btn btn-pri btn-sm" onClick={() => { switchTab('attn'); setReturnBanner(false) }}>Виж</button>
+              <button className="retention-banner-close" onClick={() => setReturnBanner(false)}>✕</button>
+            </div>
+          </div>
+        )}
+
+        {/* Overdue banner — shown on main tab when items are overdue */}
+        {!urgentBannerDismissed && overdueCount > 0 && activeTab === 'main' && (
+          <div className="retention-banner retention-banner-red">
+            <span>🔴 <strong>{overdueCount}</strong> позиц{overdueCount === 1 ? 'ия е просрочена' : 'ии са просрочени'} — необходимо е спешно обслужване.</span>
+            <div className="retention-banner-actions">
+              <button className="btn btn-sm" style={{background:'#fff',color:'var(--red)'}} onClick={() => switchTab('attn')}>Виж</button>
+              <button className="retention-banner-close" onClick={() => { setUrgentBannerDismissed(true); sessionStorage.setItem('bannerDismissed','1') }}>✕</button>
+            </div>
+          </div>
+        )}
 
         {activeTab === 'main' && (
           <>

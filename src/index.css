@@ -481,6 +481,25 @@ tr.cat-sep td {
 }
 .toast.on { transform: translateY(0); opacity: 1; }
 
+/* ── Retention banners ───────────────────────────────────────────────── */
+.retention-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: .75rem; flex-wrap: wrap;
+  padding: .75rem 1.1rem; border-radius: var(--r);
+  margin-bottom: 1rem; font-size: .82rem; font-weight: 500;
+  animation: slideDown .25s ease;
+}
+@keyframes slideDown { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }
+.retention-banner-warn { background: var(--acc-bg); color: var(--txt); border: 1px solid rgba(0,113,227,.18); }
+.retention-banner-red  { background: var(--red-bg);  color: var(--txt); border: 1px solid rgba(255,59,48,.18); }
+.retention-banner-actions { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; }
+.retention-banner-close {
+  background: none; border: none; cursor: pointer; font-size: .8rem;
+  color: var(--txt3); padding: .2rem .4rem; border-radius: 4px; line-height: 1;
+  transition: color .12s;
+}
+.retention-banner-close:hover { color: var(--txt); }
+
 /* ── Service Log ─────────────────────────────────────────────────────── */
 .slog-list { display: flex; flex-direction: column; gap: .75rem; }
 .slog-entry {
