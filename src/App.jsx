@@ -771,6 +771,25 @@ export default function App() {
           </div>
         )}
 
+        {/* Document expiry banners */}
+        {documents.filter(d => {
+          if (!d.expiryDate) return false
+          const days = Math.ceil((new Date(d.expiryDate) - new Date()) / 86400000)
+          return days <= 30
+        }).map(d => {
+          const days = Math.ceil((new Date(d.expiryDate) - new Date()) / 86400000)
+          const cls  = days <= 0 ? 'retention-banner-red' : days <= 7 ? 'retention-banner-red' : 'retention-banner-warn'
+          const msg  = days <= 0
+            ? `📋 "${d.name}" е изтекъл преди ${Math.abs(days)} дни!`
+            : `📋 "${d.name}" изтича след ${days} дн.`
+          return (
+            <div key={d.id} className={`retention-banner ${cls}`}>
+              <span>{msg}</span>
+              <button className="retention-banner-close" onClick={() => switchTab('docs')}>Виж →</button>
+            </div>
+          )
+        })}
+
         {activeTab === 'main' && (
           <>
             <StatsRow
@@ -841,6 +860,15 @@ export default function App() {
             />
           </>
         )}
+
+        {activeTab === 'docs' && (
+          <DocumentVault
+            docs={documents}
+            onAdd={() => { setEditDoc(null); setDocModalOpen(true) }}
+            onEdit={doc => { setEditDoc(doc); setDocModalOpen(true) }}
+            onDelete={deleteDoc}
+          />
+        )}
       </div>
 
       {/* ── Modal ──────────────────────────────────────────────────────────── */}
@@ -863,6 +891,20 @@ export default function App() {
             setEditServiceEntry(null)
           }}
           onClose={() => { setServiceModalOpen(false); setEditServiceEntry(null) }}
+        />
+      )}
+
+      {/* ── Document Modal ─────────────────────────────────────────────────── */}
+      {docModalOpen && (
+        <DocumentModal
+          doc={editDoc}
+          onSave={data => {
+            if (editDoc) updateDoc(data)
+            else addDoc(data)
+            setDocModalOpen(false)
+            setEditDoc(null)
+          }}
+          onClose={() => { setDocModalOpen(false); setEditDoc(null) }}
         />
       )}
 
