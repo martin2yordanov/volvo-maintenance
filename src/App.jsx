@@ -814,6 +814,12 @@ export default function App() {
               <span className={`sync-dot sync-dot-${syncStatus}`} title={syncLabel}/>
             )}
 
+            <EmailReminderToggle
+              enabled={emailReminders.enabled}
+              email={emailReminders.email}
+              onSave={saveEmailReminders}
+            />
+
             {/* ── Cross-device sync ── */}
             <div className="sync-divider" />
             {userEmail ? (
