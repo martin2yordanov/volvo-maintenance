@@ -69,3 +69,15 @@ create policy "Public read active shares"
 create policy "Authenticated insert"
   on car_shares for insert
   with check (true);
+
+-- ============================================================
+-- Weekly digest cron job (requires pg_cron extension)
+-- Enable in Supabase: Database → Extensions → pg_cron
+-- Then run:
+-- ============================================================
+-- select cron.schedule('weekly-digest', '0 8 * * 1', $$
+--   select net.http_post(
+--     url := 'https://YOUR-PROJECT.supabase.co/functions/v1/weekly-digest',
+--     headers := '{"Authorization": "Bearer YOUR-ANON-KEY"}'::jsonb
+--   );
+-- $$);

@@ -16,6 +16,8 @@ import PrintReport from './components/PrintReport.jsx'
 import DocumentVault from './components/DocumentVault.jsx'
 import DocumentModal from './components/DocumentModal.jsx'
 import ShareView from './components/ShareView.jsx'
+import CarGarage from './components/CarGarage.jsx'
+import EmailReminderToggle from './components/EmailReminderToggle.jsx'
 import { KNOWN_COSTS } from './lib/expenses'
 
 const KMY = 15000
@@ -57,6 +59,9 @@ export default function App() {
   const [syncEmail, setSyncEmail]     = useState('')
   const [syncSent, setSyncSent]       = useState(false)
   const [syncBusy, setSyncBusy]       = useState(false)
+  const [showGarage, setShowGarage]   = useState(false)
+  const [activeCarId, setActiveCarId] = useState(1)
+  const [emailReminders, setEmailReminders] = useState({ enabled: false, email: '' })
   const saveTimerRef   = useRef(null)
   const toastTimerRef  = useRef(null)
   const impRef         = useRef(null)
@@ -66,6 +71,7 @@ export default function App() {
   const manualExpensesRef = useRef([])     // keeps expenses current for debounced saves
   const serviceLogRef     = useRef([])     // keeps service log current for debounced saves
   const documentsRef      = useRef([])     // keeps documents current for debounced saves
+  const garageRef         = useRef([])     // full multi-car array
 
   // ─── Auth: anonymous sign-in + cross-device sync listener ──────────────────
   useEffect(() => {
@@ -132,6 +138,24 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, [])
 
+  // ─── Load active car data into state ────────────────────────────────────
+  function loadCarIntoState(car, dbOdo) {
+    if (car.carInfo)      setCarInfo(car.carInfo)
+    if (car.maintenance?.length > 0) {
+      setItems(car.maintenance)
+    } else if (!car.carInfo) {
+      setShowSetup(true)
+      return
+    }
+    setOdo(car.odo ?? dbOdo ?? null)
+    manualExpensesRef.current = car.expenses  || []
+    setManualExpenses(car.expenses || [])
+    serviceLogRef.current     = car.serviceLog || []
+    setServiceLog(car.serviceLog || [])
+    documentsRef.current      = car.documents  || []
+    setDocuments(car.documents || [])
+  }
+
   // ─── Load data from Supabase ─────────────────────────────────────────────
   async function loadData(uid) {
     if (isLoadingRef.current) return // prevent concurrent / overlapping fetches
@@ -159,40 +183,46 @@ export default function App() {
       if (error) throw error
 
       if (data && data.items) {
-        // Detect storage format:
-        // legacy = plain array of maintenance items
-        // current = { maintenance: [...], expenses: [...] }
         const raw = data.items
-        const maintenanceRaw = Array.isArray(raw) ? raw : (raw.maintenance || [])
-        const loadedExpenses   = Array.isArray(raw) ? [] : (raw.expenses   || [])
-        const loadedServiceLog = Array.isArray(raw) ? [] : (raw.serviceLog || [])
-        const loadedCarInfo    = Array.isArray(raw) ? null : (raw.carInfo  || null)
-        serviceLogRef.current  = loadedServiceLog
-        setServiceLog(loadedServiceLog)
 
-        const loadedDocuments = Array.isArray(raw) ? [] : (raw.documents || [])
-        documentsRef.current = loadedDocuments
-        setDocuments(loadedDocuments)
-
-        if (loadedCarInfo) setCarInfo(loadedCarInfo)
-
-        if (maintenanceRaw.length > 0) {
-          const migrated = maintenanceRaw.map(item => ({
-            ...item,
-            cat: item.cat || 'General',
-            importance: item.importance || 5,
-            cost: item.cost ?? KNOWN_COSTS[item.id] ?? null,
-            lastDate: item.lastDate ? item.lastDate.slice(0, 7) : null,
-          }))
-          setItems(migrated)
-          setOdo(data.odometer || null)
-          manualExpensesRef.current = loadedExpenses
-          setManualExpenses(loadedExpenses)
-        } else if (loadedCarInfo) {
-          // Had a car set up but no items — show setup to regenerate
-          setShowSetup(true)
+        // ── Migration: v1 → v2 ──────────────────────────────────────────────
+        let garage, activeId
+        if (raw.version === 2 && Array.isArray(raw.garage)) {
+          garage   = raw.garage
+          activeId = raw.activeCarId || raw.garage[0]?.id || 1
         } else {
-          // Brand new user — show car setup instead of seeding Volvo defaults
+          // Old format — wrap into garage structure
+          const maintenanceRaw = Array.isArray(raw) ? raw : (raw.maintenance || [])
+          const car1 = {
+            id:          1,
+            carInfo:     Array.isArray(raw) ? null : (raw.carInfo || null),
+            maintenance: maintenanceRaw.map(item => ({
+              ...item,
+              cat:        item.cat || 'General',
+              importance: item.importance || 5,
+              cost:       item.cost ?? KNOWN_COSTS[item.id] ?? null,
+              lastDate:   item.lastDate ? item.lastDate.slice(0, 7) : null,
+            })),
+            expenses:    Array.isArray(raw) ? [] : (raw.expenses   || []),
+            serviceLog:  Array.isArray(raw) ? [] : (raw.serviceLog || []),
+            documents:   Array.isArray(raw) ? [] : (raw.documents  || []),
+            odo:         data.odometer || null,
+          }
+          garage   = [car1]
+          activeId = 1
+        }
+
+        garageRef.current = garage
+        setActiveCarId(activeId)
+
+        const loadedReminders = Array.isArray(raw) ? { enabled: false, email: '' } : (raw.emailReminders || { enabled: false, email: '' })
+        setEmailReminders(loadedReminders)
+
+        // Load the active car into state
+        const activeCar = garage.find(c => c.id === activeId) || garage[0]
+        if (activeCar) {
+          loadCarIntoState(activeCar, data.odometer)
+        } else {
           setShowSetup(true)
         }
       } else {
