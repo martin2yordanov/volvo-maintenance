@@ -61,7 +61,7 @@ serve(async (req) => {
       method:  'POST',
       headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        from:    'Сервизна книжка <reminders@volvo-v70.vercel.app>',
+        from:    'Сервизна книжка <onboarding@resend.dev>',
         to:      [email],
         subject: `(${allOverdue.length}) Просрочена поддръжка — Сервизна книжка`,
         text:    body,
