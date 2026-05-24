@@ -244,12 +244,26 @@ export default function App() {
   async function saveToDb(uid, itemsToSave, odoToSave, expensesToSave, carInfoToSave) {
     if (!uid) return
     setSyncStatus('saving')
-    const itemsPayload = {
+
+    // Update the active car's slot in garageRef
+    const updatedCar = {
+      id:         activeCarId,
+      carInfo:    carInfoToSave ?? carInfo,
       maintenance: itemsToSave,
-      expenses: expensesToSave ?? manualExpensesRef.current,
-      carInfo: carInfoToSave ?? carInfo,
+      expenses:   expensesToSave ?? manualExpensesRef.current,
       serviceLog: serviceLogRef.current,
-      documents: documentsRef.current,
+      documents:  documentsRef.current,
+      odo:        odoToSave,
+    }
+    const updatedGarage = garageRef.current.map(c => c.id === activeCarId ? updatedCar : c)
+    if (!updatedGarage.find(c => c.id === activeCarId)) updatedGarage.push(updatedCar)
+    garageRef.current = updatedGarage
+
+    const itemsPayload = {
+      version:        2,
+      garage:         updatedGarage,
+      activeCarId:    activeCarId,
+      emailReminders: emailReminders,
     }
     try {
       const { error } = await supabase
@@ -658,12 +672,97 @@ export default function App() {
     : ''
   const syncClass = syncStatus === 'saved' ? 'ok' : syncStatus === 'error' ? 'err' : 'busy'
 
-  function handleCarGenerated(newItems, newCarInfo) {
+  // ─── Garage CRUD ─────────────────────────────────────────────────────────
+  function switchCar(id) {
+    const car = garageRef.current.find(c => c.id === id)
+    if (!car) return
+    // Save current state into garageRef before switching
+    const current = {
+      id:         activeCarId,
+      carInfo,
+      maintenance: items,
+      expenses:   manualExpensesRef.current,
+      serviceLog: serviceLogRef.current,
+      documents:  documentsRef.current,
+      odo,
+    }
+    garageRef.current = garageRef.current.map(c => c.id === activeCarId ? current : c)
+    setActiveCarId(id)
+    loadCarIntoState(car, null)
+    setShowGarage(false)
+    showToast(`Switched to ${car.carInfo?.make || 'car'}`)
+  }
+
+  function addCarToGarage() {
+    setShowGarage(false)
+    setShowSetup(true)
+  }
+
+  function handleCarGeneratedMulti(newItems, newCarInfo) {
+    const newId = Date.now()
+    const newCar = {
+      id:         newId,
+      carInfo:    newCarInfo,
+      maintenance: newItems,
+      expenses:   [],
+      serviceLog: [],
+      documents:  [],
+      odo:        null,
+    }
+    garageRef.current = [...garageRef.current, newCar]
+    setActiveCarId(newId)
     setCarInfo(newCarInfo)
     setItems(newItems)
+    setOdo(null)
+    manualExpensesRef.current = []
+    setManualExpenses([])
+    serviceLogRef.current = []
+    setServiceLog([])
+    documentsRef.current = []
+    setDocuments([])
     setShowSetup(false)
-    saveToDb(userId, newItems, odo, manualExpensesRef.current, newCarInfo)
-    showToast(`✓ Генерирана таблица за ${newCarInfo.make} ${newCarInfo.model}`)
+    saveToDb(userId, newItems, null, [], newCarInfo)
+    showToast(`✓ ${newCarInfo.make} ${newCarInfo.model} добавен`)
+  }
+
+  function deleteCarFromGarage(id) {
+    if (garageRef.current.length <= 1) { showToast('Не може да изтриеш последния автомобил'); return }
+    if (!confirm('Изтрий този автомобил и всички негови данни?')) return
+    const updated = garageRef.current.filter(c => c.id !== id)
+    garageRef.current = updated
+    if (id === activeCarId) {
+      const first = updated[0]
+      setActiveCarId(first.id)
+      loadCarIntoState(first, null)
+    }
+    saveToDb(userId, items, odo, manualExpensesRef.current, carInfo)
+    showToast('Автомобилът е изтрит')
+  }
+
+  function saveEmailReminders(prefs) {
+    setEmailReminders(prefs)
+    // Directly save to DB (emailReminders is not in a ref, use current state + prefs)
+    const payload = {
+      version:        2,
+      garage:         garageRef.current,
+      activeCarId,
+      emailReminders: prefs,
+    }
+    supabase.from('maintenance_data')
+      .upsert({ user_id: userId, items: payload, odometer: odo }, { onConflict: 'user_id' })
+      .then(({ error: saveErr }) => { if (saveErr) showToast('⚠️ Грешка при запазване'); else showToast('✓ Настройките са запазени'); })
+  }
+
+  function handleCarGenerated(newItems, newCarInfo) {
+    if (garageRef.current.length > 0 && garageRef.current.some(c => c.id !== activeCarId || c.carInfo)) {
+      handleCarGeneratedMulti(newItems, newCarInfo)
+    } else {
+      setCarInfo(newCarInfo)
+      setItems(newItems)
+      setShowSetup(false)
+      saveToDb(userId, newItems, odo, manualExpensesRef.current, newCarInfo)
+      showToast(`✓ Генерирана таблица за ${newCarInfo.make} ${newCarInfo.model}`)
+    }
   }
 
   // ─── Share view ───────────────────────────────────────────────────────────
