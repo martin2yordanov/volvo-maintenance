@@ -52,3 +52,20 @@ create trigger maintenance_data_updated_at
 -- Done! Now enable Anonymous Auth in your Supabase dashboard:
 -- Authentication → Providers → Anonymous → Enable
 -- ============================================================
+
+-- ============================================================
+-- Car Share Links
+-- ============================================================
+create table if not exists car_shares (
+  token       text primary key default replace(gen_random_uuid()::text, '-', ''),
+  data        jsonb not null,
+  created_at  timestamptz default now(),
+  expires_at  timestamptz default (now() + interval '90 days')
+);
+alter table car_shares enable row level security;
+create policy "Public read active shares"
+  on car_shares for select
+  using (expires_at > now());
+create policy "Authenticated insert"
+  on car_shares for insert
+  with check (true);

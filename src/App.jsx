@@ -13,11 +13,16 @@ import CarLogo from './components/CarLogo.jsx'
 import ServiceLog from './components/ServiceLog.jsx'
 import ServiceLogModal from './components/ServiceLogModal.jsx'
 import PrintReport from './components/PrintReport.jsx'
+import DocumentVault from './components/DocumentVault.jsx'
+import DocumentModal from './components/DocumentModal.jsx'
+import ShareView from './components/ShareView.jsx'
 import { KNOWN_COSTS } from './lib/expenses'
 
 const KMY = 15000
 
 export default function App() {
+  const shareToken = new URLSearchParams(window.location.search).get('share')
+
   // ─── State ──────────────────────────────────────────────────────────────────
   const [items, setItems]         = useState([])
   const [odo, setOdo]             = useState(null)
@@ -40,6 +45,9 @@ export default function App() {
   const [serviceLog, setServiceLog]             = useState([])
   const [serviceModalOpen, setServiceModalOpen] = useState(false)
   const [editServiceEntry, setEditServiceEntry] = useState(null)
+  const [documents, setDocuments]         = useState([])
+  const [docModalOpen, setDocModalOpen]   = useState(false)
+  const [editDoc, setEditDoc]             = useState(null)
   const [carInfo, setCarInfo]       = useState(null)  // { make, model, year }
   const [showSetup, setShowSetup]   = useState(false)
   // ─── Cross-device sync state ─────────────────────────────────────────────
@@ -57,6 +65,7 @@ export default function App() {
   const isLoadingRef      = useRef(false)  // prevents concurrent loadData calls
   const manualExpensesRef = useRef([])     // keeps expenses current for debounced saves
   const serviceLogRef     = useRef([])     // keeps service log current for debounced saves
+  const documentsRef      = useRef([])     // keeps documents current for debounced saves
 
   // ─── Auth: anonymous sign-in + cross-device sync listener ──────────────────
   useEffect(() => {
@@ -161,6 +170,10 @@ export default function App() {
         serviceLogRef.current  = loadedServiceLog
         setServiceLog(loadedServiceLog)
 
+        const loadedDocuments = Array.isArray(raw) ? [] : (raw.documents || [])
+        documentsRef.current = loadedDocuments
+        setDocuments(loadedDocuments)
+
         if (loadedCarInfo) setCarInfo(loadedCarInfo)
 
         if (maintenanceRaw.length > 0) {
@@ -206,6 +219,7 @@ export default function App() {
       expenses: expensesToSave ?? manualExpensesRef.current,
       carInfo: carInfoToSave ?? carInfo,
       serviceLog: serviceLogRef.current,
+      documents: documentsRef.current,
     }
     try {
       const { error } = await supabase
@@ -394,6 +408,56 @@ export default function App() {
     showToast('Данните са нулирани')
   }
 
+  // ─── Document Vault CRUD ─────────────────────────────────────────────────
+  function addDoc(data) {
+    const doc = { ...data, id: Date.now() }
+    const updated = [...documentsRef.current, doc]
+    documentsRef.current = updated
+    setDocuments(updated)
+    saveToDb(userId, items, odo, manualExpensesRef.current, carInfo)
+    showToast('✓ Документът е добавен')
+  }
+
+  function updateDoc(data) {
+    const updated = documentsRef.current.map(d => d.id === editDoc.id ? { ...d, ...data } : d)
+    documentsRef.current = updated
+    setDocuments(updated)
+    saveToDb(userId, items, odo, manualExpensesRef.current, carInfo)
+    showToast('Документът е обновен')
+  }
+
+  function deleteDoc(id) {
+    if (!confirm('Изтрий този документ?')) return
+    const updated = documentsRef.current.filter(d => d.id !== id)
+    documentsRef.current = updated
+    setDocuments(updated)
+    saveToDb(userId, items, odo, manualExpensesRef.current, carInfo)
+    showToast('Документът е изтрит')
+  }
+
+  // ─── Share Link ──────────────────────────────────────────────────────────
+  async function generateShareLink() {
+    const payload = {
+      carInfo,
+      odo,
+      maintenance: items,
+      serviceLog: serviceLogRef.current,
+    }
+    try {
+      const { data, error } = await supabase
+        .from('car_shares')
+        .insert({ data: payload })
+        .select('token')
+        .single()
+      if (error) throw error
+      const url = `${window.location.origin}${window.location.pathname}?share=${data.token}`
+      await navigator.clipboard.writeText(url)
+      showToast('✓ Линкът е копиран в клипборда!')
+    } catch (err) {
+      showToast('⚠️ Грешка при генериране на линк')
+    }
+  }
+
   // ─── Cross-device sync ───────────────────────────────────────────────────
   async function sendSync() {
     const email = syncEmail.trim()
@@ -572,6 +636,11 @@ export default function App() {
     showToast(`✓ Генерирана таблица за ${newCarInfo.make} ${newCarInfo.model}`)
   }
 
+  // ─── Share view ───────────────────────────────────────────────────────────
+  if (shareToken) {
+    return <ShareView token={shareToken} />
+  }
+
   // ─── Loading screen ───────────────────────────────────────────────────────
   if (loading) {
     return (
@@ -606,6 +675,7 @@ export default function App() {
           </div>
           <div className="hdr-btns">
             <button className="print-btn" onClick={() => window.print()}>🖨 Продажба</button>
+            <button className="print-btn" onClick={generateShareLink}>🔗 Сподели</button>
             <button className="btn btn-ghost" onClick={() => { setEditItem(null); setModalOpen(true) }}>＋ Добави</button>
             <button className="btn btn-ghost" onClick={doExport}>↑ Експорт</button>
             <button className="btn btn-ghost" onClick={() => impRef.current?.click()}>↓ Импорт</button>
@@ -660,6 +730,7 @@ export default function App() {
               { id: 'year', label: '📅 Тази Година' },
               { id: 'exp',  label: '💸 Разходи' },
               { id: 'slog', label: '🔧 Сервиз' },
+              { id: 'docs', label: '📄 Документи' },
             ].map(tab => (
               <button
                 key={tab.id}
