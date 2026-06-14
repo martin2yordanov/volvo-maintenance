@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from './lib/supabase'
+import { useUser, SignIn, SignUp, UserButton } from '@clerk/clerk-react'
 import { DEFAULTS, CAT_ORDER, CAT_ICON, calcNextDue, STATUS_ORDER, defaultCmp, importanceBadge } from './lib/data'
 import MainTable from './components/MainTable.jsx'
 import NeedsAttention from './components/NeedsAttention.jsx'
@@ -18,12 +18,47 @@ import DocumentModal from './components/DocumentModal.jsx'
 import ShareView from './components/ShareView.jsx'
 import CarGarage from './components/CarGarage.jsx'
 import EmailReminderToggle from './components/EmailReminderToggle.jsx'
-import { KNOWN_COSTS } from './lib/expenses'
 
 const KMY = 15000
 
+// ─── Local persistence (per Clerk user) ──────────────────────────────────────
+const STORE_PREFIX = 'vm_data_'   // localStorage key prefix, namespaced per user id
+
+// Default first-run payload (v2 garage shape) seeded with the built-in Volvo data
+function seedPayload() {
+  return {
+    version: 2,
+    garage: [{
+      id: 1,
+      carInfo: { make: 'Volvo', model: 'V70', year: 2003 },
+      maintenance: JSON.parse(JSON.stringify(DEFAULTS)),
+      expenses: [],
+      serviceLog: [],
+      documents: [],
+      odo: null,
+    }],
+    activeCarId: 1,
+    emailReminders: { enabled: false, email: '' },
+  }
+}
+
+// Decode a share payload from the URL hash (#share=<base64 utf-8 json>)
+function readShareFromHash() {
+  const m = (window.location.hash || '').match(/share=([^&]+)/)
+  if (!m) return null
+  try {
+    return JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(m[1])))))
+  } catch {
+    return null
+  }
+}
+
 export default function App() {
-  const shareToken = new URLSearchParams(window.location.search).get('share')
+  const shareData = readShareFromHash()
+
+  // ─── Clerk auth ───────────────────────────────────────────────────────────
+  const { isLoaded, isSignedIn, user } = useUser()
+  const userId = user?.id ?? null
 
   // ─── State ──────────────────────────────────────────────────────────────────
   const [items, setItems]         = useState([])
@@ -36,8 +71,7 @@ export default function App() {
   const [editItem, setEditItem]   = useState(null)
   const [toast, setToast]         = useState({ msg: '', on: false })
   const [loading, setLoading]     = useState(true)
-  const [syncStatus, setSyncStatus] = useState('idle') // idle | saving | saved | error
-  const [userId, setUserId]       = useState(null)
+  const [syncStatus, setSyncStatus] = useState('idle') // idle | saving | saved | error | local
   const [statusFilter, setStatusFilter] = useState(null) // null | 'red' | 'warn' | 'ok' | 'unk'
   const [grouped, setGrouped]     = useState(true)  // true = category view, false = sorted view
   const [showHidden, setShowHidden] = useState(false)
@@ -52,91 +86,29 @@ export default function App() {
   const [editDoc, setEditDoc]             = useState(null)
   const [carInfo, setCarInfo]       = useState(null)  // { make, model, year }
   const [showSetup, setShowSetup]   = useState(false)
-  // ─── Cross-device sync state ─────────────────────────────────────────────
-  const [isAnon, setIsAnon]           = useState(true)
-  const [userEmail, setUserEmail]     = useState(null)
-  const [syncBarOpen, setSyncBarOpen] = useState(false)
-  const [syncEmail, setSyncEmail]     = useState('')
-  const [syncSent, setSyncSent]       = useState(false)
-  const [syncBusy, setSyncBusy]       = useState(false)
   const [showGarage, setShowGarage]   = useState(false)
+  const [authMode, setAuthMode]       = useState('signIn') // signIn | signUp
   const [activeCarId, setActiveCarId] = useState(1)
   const [emailReminders, setEmailReminders] = useState({ enabled: false, email: '' })
   const saveTimerRef   = useRef(null)
   const toastTimerRef  = useRef(null)
   const impRef         = useRef(null)
-  const initDoneRef    = useRef(false)
-  const userIdRef         = useRef(null)   // tracks current uid for stale-closure checks
-  const isLoadingRef      = useRef(false)  // prevents concurrent loadData calls
+  const metaOverflowRef   = useRef(false)  // true once Clerk metadata mirror exceeds its size cap
   const manualExpensesRef = useRef([])     // keeps expenses current for debounced saves
   const serviceLogRef     = useRef([])     // keeps service log current for debounced saves
   const documentsRef      = useRef([])     // keeps documents current for debounced saves
   const garageRef         = useRef([])     // full multi-car array
 
-  // ─── Auth: anonymous sign-in + cross-device sync listener ──────────────────
+  // ─── Auth: load the signed-in user's data once Clerk is ready ──────────────
   useEffect(() => {
-    async function initAuth() {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        userIdRef.current = session.user.id
-        setUserId(session.user.id)
-        setIsAnon(session.user.is_anonymous ?? !session.user.email)
-        setUserEmail(session.user.email ?? null)
-        await loadData(session.user.id)
-      } else {
-        const { data, error } = await supabase.auth.signInAnonymously()
-        if (error) {
-          console.error('Auth error:', error)
-          setItems(JSON.parse(JSON.stringify(DEFAULTS)))
-          setLoading(false)
-          return
-        }
-        userIdRef.current = data.user.id
-        setUserId(data.user.id)
-        setIsAnon(true)
-        await loadData(data.user.id)
-      }
-      initDoneRef.current = true
+    if (!isLoaded) return
+    if (!isSignedIn || !userId) {
+      setLoading(false)
+      return
     }
-
-    initAuth()
-
-    // Listen for auth changes that happen AFTER the initial load:
-    // - User confirms magic-link email  → SIGNED_IN (new device) or USER_UPDATED (same device upgrade)
-    // - User signs out                  → SIGNED_OUT
-    // NOTE: Supabase also fires SIGNED_IN / TOKEN_REFRESHED when the tab regains focus
-    //       and the JWT is silently refreshed. We must ignore those to avoid a reload loop.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!initDoneRef.current) return // ignore events fired during initAuth
-
-        // Token refresh on tab focus — same user, no data change needed
-        if (event === 'TOKEN_REFRESHED') return
-        if (event === 'SIGNED_IN' && session?.user?.id === userIdRef.current) return
-
-        if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
-          userIdRef.current = session.user.id
-          setUserId(session.user.id)
-          setIsAnon(session.user.is_anonymous ?? !session.user.email)
-          setUserEmail(session.user.email ?? null)
-          setSyncSent(false)
-          setSyncBarOpen(false)
-          await loadData(session.user.id)
-        } else if (event === 'SIGNED_OUT') {
-          userIdRef.current = null
-          setUserEmail(null)
-          setIsAnon(true)
-          const { data } = await supabase.auth.signInAnonymously()
-          if (data?.user) {
-            userIdRef.current = data.user.id
-            setUserId(data.user.id)
-            await loadData(data.user.id)
-          }
-        }
-      }
-    )
-    return () => subscription.unsubscribe()
-  }, [])
+    loadFromStore(userId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, isSignedIn, userId])
 
   // ─── Load active car data into state ────────────────────────────────────
   function loadCarIntoState(car, dbOdo) {
@@ -156,91 +128,100 @@ export default function App() {
     setDocuments(car.documents || [])
   }
 
-  // ─── Load data from Supabase ─────────────────────────────────────────────
-  async function loadData(uid) {
-    if (isLoadingRef.current) return // prevent concurrent / overlapping fetches
-    isLoadingRef.current = true
+  // ─── Load the user's data from local storage / Clerk metadata ─────────────
+  async function loadFromStore(uid) {
     setLoading(true)
-
-    // Safety net: if the fetch never resolves (e.g. token mid-refresh), unblock after 10 s
-    const timeoutId = setTimeout(() => {
-      if (isLoadingRef.current) {
-        console.error('[loadData] timeout — unblocking loading state')
-        isLoadingRef.current = false
-        setLoading(false)
-        showToast('Грешка: таймаут при зареждане. Работи офлайн.')
-        setItems(prev => prev.length ? prev : JSON.parse(JSON.stringify(DEFAULTS)))
-      }
-    }, 10000)
-
     try {
-      const { data, error } = await supabase
-        .from('maintenance_data')
-        .select('items, odometer')
-        .eq('user_id', uid)
-        .maybeSingle()
+      let raw = null
 
-      if (error) throw error
-
-      if (data && data.items) {
-        const raw = data.items
-
-        // ── Migration: v1 → v2 ──────────────────────────────────────────────
-        let garage, activeId
-        if (raw.version === 2 && Array.isArray(raw.garage)) {
-          garage   = raw.garage
-          activeId = raw.activeCarId || raw.garage[0]?.id || 1
-        } else {
-          // Old format — wrap into garage structure
-          const maintenanceRaw = Array.isArray(raw) ? raw : (raw.maintenance || [])
-          const car1 = {
-            id:          1,
-            carInfo:     Array.isArray(raw) ? null : (raw.carInfo || null),
-            maintenance: maintenanceRaw.map(item => ({
-              ...item,
-              cat:        item.cat || 'General',
-              importance: item.importance || 5,
-              cost:       item.cost ?? KNOWN_COSTS[item.id] ?? null,
-              lastDate:   item.lastDate ? item.lastDate.slice(0, 7) : null,
-            })),
-            expenses:    Array.isArray(raw) ? [] : (raw.expenses   || []),
-            serviceLog:  Array.isArray(raw) ? [] : (raw.serviceLog || []),
-            documents:   Array.isArray(raw) ? [] : (raw.documents  || []),
-            odo:         data.odometer || null,
-          }
-          garage   = [car1]
-          activeId = 1
-        }
-
-        garageRef.current = garage
-        setActiveCarId(activeId)
-
-        const loadedReminders = Array.isArray(raw) ? { enabled: false, email: '' } : (raw.emailReminders || { enabled: false, email: '' })
-        setEmailReminders(loadedReminders)
-
-        // Load the active car into state
-        const activeCar = garage.find(c => c.id === activeId) || garage[0]
-        if (activeCar) {
-          loadCarIntoState(activeCar, data.odometer)
-        } else {
-          setShowSetup(true)
-        }
-      } else {
-        // First time: show car setup
-        setShowSetup(true)
+      // 1. localStorage — primary store (no practical size limit)
+      const local = localStorage.getItem(STORE_PREFIX + uid)
+      if (local) {
+        try { raw = JSON.parse(local) } catch { /* corrupt — fall through */ }
       }
+
+      // 2. Clerk unsafeMetadata — cross-device fallback when this browser is empty
+      if (!raw && user?.unsafeMetadata?.maintenance) {
+        raw = user.unsafeMetadata.maintenance
+      }
+
+      // 3. First run for this user — seed with the default Volvo dataset and save it
+      if (!raw) {
+        raw = seedPayload()
+        persist(uid, raw)
+      }
+
+      hydrate(raw)
     } catch (err) {
       console.error('Load error:', err)
       showToast('Грешка при зареждане. Работи офлайн.')
       setItems(JSON.parse(JSON.stringify(DEFAULTS)))
     } finally {
-      clearTimeout(timeoutId)
-      isLoadingRef.current = false
       setLoading(false)
     }
   }
 
-  // ─── Save to Supabase ────────────────────────────────────────────────────
+  // Turn a stored v2 payload into live component state
+  function hydrate(raw) {
+    let garage, activeId
+    if (raw && raw.version === 2 && Array.isArray(raw.garage)) {
+      garage   = raw.garage
+      activeId = raw.activeCarId || raw.garage[0]?.id || 1
+    } else {
+      // Defensive: wrap any legacy / unexpected shape into a single-car garage
+      const maintenanceRaw = Array.isArray(raw) ? raw : (raw?.maintenance || [])
+      garage = [{
+        id:          1,
+        carInfo:     (raw && raw.carInfo) || { make: 'Volvo', model: 'V70', year: 2003 },
+        maintenance: maintenanceRaw.length ? maintenanceRaw : JSON.parse(JSON.stringify(DEFAULTS)),
+        expenses:    raw?.expenses   || [],
+        serviceLog:  raw?.serviceLog || [],
+        documents:   raw?.documents  || [],
+        odo:         raw?.odo ?? null,
+      }]
+      activeId = 1
+    }
+
+    garageRef.current = garage
+    setActiveCarId(activeId)
+    setEmailReminders((raw && raw.emailReminders) || { enabled: false, email: '' })
+
+    const activeCar = garage.find(c => c.id === activeId) || garage[0]
+    if (activeCar) loadCarIntoState(activeCar, activeCar.odo)
+    else setShowSetup(true)
+  }
+
+  // ─── Persist: localStorage (durable) + best-effort Clerk mirror ───────────
+  function persist(uid, payload) {
+    if (!uid) return
+    try {
+      localStorage.setItem(STORE_PREFIX + uid, JSON.stringify(payload))
+    } catch (e) {
+      console.error('[persist] localStorage write failed:', e)
+    }
+
+    // Mirror to Clerk so the data follows the account across devices.
+    // Clerk caps total user metadata at ~8 KB — once we overflow, stop trying
+    // and keep localStorage as the source of truth (shown as "local only").
+    if (!user || metaOverflowRef.current) {
+      setSyncStatus('local')
+      setTimeout(() => setSyncStatus('idle'), 1500)
+      return
+    }
+    user.update({ unsafeMetadata: { ...user.unsafeMetadata, maintenance: payload } })
+      .then(() => {
+        setSyncStatus('saved')
+        setTimeout(() => setSyncStatus('idle'), 1500)
+      })
+      .catch(() => {
+        // Almost always the size cap — degrade gracefully to local-only.
+        metaOverflowRef.current = true
+        setSyncStatus('local')
+        setTimeout(() => setSyncStatus('idle'), 1500)
+      })
+  }
+
+  // ─── Save the active car + garage into the store ──────────────────────────
   async function saveToDb(uid, itemsToSave, odoToSave, expensesToSave, carInfoToSave) {
     if (!uid) return
     setSyncStatus('saving')
@@ -265,22 +246,7 @@ export default function App() {
       activeCarId:    activeCarId,
       emailReminders: emailReminders,
     }
-    try {
-      const { error } = await supabase
-        .from('maintenance_data')
-        .upsert(
-          { user_id: uid, items: itemsPayload, odometer: odoToSave },
-          { onConflict: 'user_id' }
-        )
-      if (error) throw error
-      console.log('[saveToDb] success — odo saved:', odoToSave)
-      setSyncStatus('saved')
-      setTimeout(() => setSyncStatus('idle'), 2000)
-    } catch (err) {
-      console.error('[saveToDb] error:', err)
-      setSyncStatus('error')
-      showToast('⚠️ Грешка при запазване в облака')
-    }
+    persist(uid, itemsPayload)
   }
 
   // Debounced save — uid passed explicitly so the timeout closure never goes stale
@@ -480,6 +446,8 @@ export default function App() {
   }
 
   // ─── Share Link ──────────────────────────────────────────────────────────
+  // The full snapshot is encoded into the URL hash, so a shared link works
+  // without any backend — the recipient's browser decodes it locally.
   async function generateShareLink() {
     const payload = {
       carInfo,
@@ -488,59 +456,13 @@ export default function App() {
       serviceLog: serviceLogRef.current,
     }
     try {
-      const { data, error } = await supabase
-        .from('car_shares')
-        .insert({ data: payload })
-        .select('token')
-        .single()
-      if (error) throw error
-      const url = `${window.location.origin}${window.location.pathname}?share=${data.token}`
+      const encoded = encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify(payload)))))
+      const url = `${window.location.origin}${window.location.pathname}#share=${encoded}`
       await navigator.clipboard.writeText(url)
       showToast('✓ Линкът е копиран в клипборда!')
     } catch (err) {
       showToast('⚠️ Грешка при генериране на линк')
     }
-  }
-
-  // ─── Cross-device sync ───────────────────────────────────────────────────
-  async function sendSync() {
-    const email = syncEmail.trim()
-    if (!email) return
-    setSyncBusy(true)
-    try {
-      if (!isAnon) {
-        // Already a named user on this device — sign in on another device.
-        const { error } = await supabase.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: false },
-        })
-        if (error) throw error
-      } else {
-        // Anonymous session (new browser or device).
-        // Try OTP first: if this email already has an account, send magic link.
-        // If email is not registered yet, upgrade the anonymous account instead.
-        const { error: otpError } = await supabase.auth.signInWithOtp({
-          email,
-          options: { shouldCreateUser: false },
-        })
-        if (!otpError) {
-          // Existing account — magic link sent, data will load on confirmation.
-        } else {
-          // Email not found — link this anonymous session to a new email account.
-          const { error: updateError } = await supabase.auth.updateUser({ email })
-          if (updateError) throw updateError
-        }
-      }
-      setSyncSent(true)
-    } catch (err) {
-      showToast('⚠️ ' + (err.message || 'Грешка при синхронизация'))
-    } finally {
-      setSyncBusy(false)
-    }
-  }
-
-  async function doSignOut() {
-    await supabase.auth.signOut()
   }
 
   // ─── Import / Export ─────────────────────────────────────────────────────
@@ -667,10 +589,10 @@ export default function App() {
 
   // ─── Sync status label ────────────────────────────────────────────────────
   const syncLabel = syncStatus === 'saving' ? '⟳ Запазване...'
-    : syncStatus === 'saved' ? '✓ Запазено'
+    : syncStatus === 'saved' ? '✓ Запазено (синх.)'
+    : syncStatus === 'local' ? '✓ Запазено (локално)'
     : syncStatus === 'error' ? '⚠ Грешка'
     : ''
-  const syncClass = syncStatus === 'saved' ? 'ok' : syncStatus === 'error' ? 'err' : 'busy'
 
   // ─── Garage CRUD ─────────────────────────────────────────────────────────
   function switchCar(id) {
@@ -741,16 +663,14 @@ export default function App() {
 
   function saveEmailReminders(prefs) {
     setEmailReminders(prefs)
-    // Directly save to DB (emailReminders is not in a ref, use current state + prefs)
     const payload = {
       version:        2,
       garage:         garageRef.current,
       activeCarId,
       emailReminders: prefs,
     }
-    supabase.from('maintenance_data')
-      .upsert({ user_id: userId, items: payload, odometer: odo }, { onConflict: 'user_id' })
-      .then(({ error: saveErr }) => { if (saveErr) showToast('⚠️ Грешка при запазване'); else showToast('✓ Настройките са запазени'); })
+    persist(userId, payload)
+    showToast('✓ Настройките са запазени')
   }
 
   function handleCarGenerated(newItems, newCarInfo) {
@@ -765,17 +685,52 @@ export default function App() {
     }
   }
 
-  // ─── Share view ───────────────────────────────────────────────────────────
-  if (shareToken) {
-    return <ShareView token={shareToken} />
+  // ─── Share view (public, no login required) ────────────────────────────────
+  if (shareData) {
+    return <ShareView data={shareData} />
   }
 
-  // ─── Loading screen ───────────────────────────────────────────────────────
+  // ─── Wait for Clerk to initialise ───────────────────────────────────────────
+  if (!isLoaded) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner" />
+        <span>Зареждане…</span>
+      </div>
+    )
+  }
+
+  // ─── Sign-in gate ───────────────────────────────────────────────────────────
+  if (!isSignedIn) {
+    return (
+      <div className="auth-screen">
+        <div className="auth-intro">
+          <h1>🔧 Сервизна книжка</h1>
+          <p>
+            {authMode === 'signIn'
+              ? 'Влез в профила си, за да видиш и управляваш поддръжката на автомобила си.'
+              : 'Създай профил, за да започнеш да следиш поддръжката на автомобила си.'}
+          </p>
+        </div>
+        {authMode === 'signIn'
+          ? <SignIn routing="hash" />
+          : <SignUp routing="hash" />}
+        <button
+          className="btn btn-ghost btn-sm auth-toggle"
+          onClick={() => setAuthMode(m => m === 'signIn' ? 'signUp' : 'signIn')}
+        >
+          {authMode === 'signIn' ? 'Нямаш профил? Регистрирай се' : 'Вече имаш профил? Влез'}
+        </button>
+      </div>
+    )
+  }
+
+  // ─── Loading the user's data ────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="loading-screen">
         <div className="spinner" />
-        <span>Зареждане от облака…</span>
+        <span>Зареждане на данните…</span>
       </div>
     )
   }
@@ -820,41 +775,12 @@ export default function App() {
               onSave={saveEmailReminders}
             />
 
-            {/* ── Cross-device sync ── */}
+            {/* ── Account ── */}
             <div className="sync-divider" />
-            {userEmail ? (
-              <>
-                <span className="sync-info" title="Данните са свързани с този имейл">☁ {userEmail}</span>
-                <button className="btn btn-ghost btn-sm" onClick={doSignOut}>Изход</button>
-              </>
-            ) : syncBarOpen ? (
-              syncSent ? (
-                <>
-                  <span className="sync-info">📧 Провери имейла си за линк</span>
-                  <button className="btn btn-ghost btn-sm" onClick={() => { setSyncBarOpen(false); setSyncSent(false) }}>✕</button>
-                </>
-              ) : (
-                <>
-                  <input
-                    type="email"
-                    className="sync-input"
-                    value={syncEmail}
-                    onChange={e => setSyncEmail(e.target.value)}
-                    onKeyDown={e => e.key === 'Enter' && sendSync()}
-                    placeholder="your@email.com"
-                    autoFocus
-                  />
-                  <button className="btn btn-pri btn-sm" onClick={sendSync} disabled={syncBusy}>
-                    {syncBusy ? '...' : 'Изпрати'}
-                  </button>
-                  <button className="btn btn-ghost btn-sm" onClick={() => setSyncBarOpen(false)}>✕</button>
-                </>
-              )
-            ) : (
-              <button className="btn btn-ghost btn-sm" onClick={() => setSyncBarOpen(true)} title="Синхронизирай данните си между устройства">
-                ☁ Синхрон
-              </button>
+            {user?.primaryEmailAddress && (
+              <span className="sync-info" title="Влязъл си с този имейл">☁ {user.primaryEmailAddress.emailAddress}</span>
             )}
+            <UserButton afterSignOutUrl="/" />
           </div>
         </div>
 

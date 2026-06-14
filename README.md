@@ -1,14 +1,14 @@
 # 🚗 Volvo V70 Maintenance App
 
-A cloud-synced car maintenance tracker. Data saved in **Supabase** (Postgres), hosted on **Vercel**, auto-deployed from **GitHub**.
+A car maintenance tracker. Login via **Clerk**, data stored per-user in the browser (localStorage) and mirrored to the Clerk user's metadata. Hosted on **Vercel**, auto-deployed from **GitHub**.
 
 ## Architecture
 
 ```
 GitHub (code) → Vercel (auto-deploy) → React SPA
                                           ↕
-                                   Supabase (database)
-                                   Anonymous Auth + RLS
+                                   Clerk (authentication)
+                              localStorage + Clerk user metadata
 ```
 
 **No backend server. No manual deployment. Edit code → push → live in ~30 seconds.**
@@ -17,16 +17,13 @@ GitHub (code) → Vercel (auto-deploy) → React SPA
 
 ## ⚡ Setup (One Time — ~20 minutes)
 
-### Step 1 — Supabase (Database)
+### Step 1 — Clerk (Authentication)
 
-1. Go to [supabase.com](https://supabase.com) → **Start for free** → Sign up
-2. **New project** → give it a name (e.g. `volvo-maintenance`) → choose a region → **Create project**
-3. Wait ~2 minutes for the project to spin up
-4. Go to **SQL Editor** → paste the contents of `supabase_schema.sql` → **Run**
-5. Go to **Authentication** → **Providers** → find **Anonymous** → toggle it **ON** → Save
-6. Go to **Project Settings** → **API**:
-   - Copy **Project URL** → this is your `VITE_SUPABASE_URL`
-   - Copy **anon / public** key → this is your `VITE_SUPABASE_ANON_KEY`
+1. Go to [dashboard.clerk.com](https://dashboard.clerk.com) → **Sign up** → **Create application**
+2. Name it (e.g. `volvo-maintenance`), pick the sign-in methods you want (Email is enough) → **Create**
+3. Go to **API Keys**:
+   - Copy the **Publishable key** (`pk_test_…` / `pk_live_…`) → this is your `VITE_CLERK_PUBLISHABLE_KEY`
+4. (Optional) Under **Paths**, the default Account Portal works out of the box; no extra config needed for this SPA.
 
 ---
 
@@ -41,11 +38,10 @@ GitHub (code) → Vercel (auto-deploy) → React SPA
    - Click **Add file** → **Upload files**
    - Drag the entire project folder contents
    - Click **Commit changes**
-4. Add Supabase secrets to GitHub:
+4. Add the Clerk key to GitHub (only needed if you build in CI):
    - Go to your repo → **Settings** → **Secrets and variables** → **Actions**
    - Click **New repository secret** → add:
-     - `VITE_SUPABASE_URL` = your Supabase Project URL
-     - `VITE_SUPABASE_ANON_KEY` = your Supabase anon key
+     - `VITE_CLERK_PUBLISHABLE_KEY` = your Clerk publishable key
 
 ---
 
@@ -54,8 +50,7 @@ GitHub (code) → Vercel (auto-deploy) → React SPA
 1. Go to [vercel.com](https://vercel.com) → **Sign Up** → **Continue with GitHub**
 2. Click **Add New Project** → import your `volvo-maintenance` repo
 3. Vercel auto-detects Vite. In **Environment Variables** add:
-   - `VITE_SUPABASE_URL` = your Supabase Project URL
-   - `VITE_SUPABASE_ANON_KEY` = your Supabase anon key
+   - `VITE_CLERK_PUBLISHABLE_KEY` = your Clerk publishable key
 4. Click **Deploy** → wait ~60 seconds
 5. Your app is live at `https://volvo-maintenance-xxx.vercel.app`
 6. Optional: go to **Settings** → **Domains** → set a custom name like `volvo-v70.vercel.app`
@@ -76,15 +71,15 @@ Or directly on GitHub:
 
 ---
 
-## 📱 How Data Sync Works
+## 📱 How Login & Data Works
 
-- On first open: app signs you in **anonymously** (no password needed)
-- Your anonymous user ID is stored in the browser session
-- All data is saved to Supabase under your user ID
-- Open the app on any device with the same browser session → data is there
-- To use on a **new device**: use the **↑ Експорт** button to save a JSON file, then **↓ Импорт** on the new device
+- On first open: you **sign in / sign up** with Clerk (email).
+- New accounts are seeded with the default Volvo V70 maintenance schedule.
+- Data is saved in the browser (**localStorage**) namespaced per Clerk user id.
+- It's also **mirrored to your Clerk user metadata** so it follows your account to other devices — as long as it fits Clerk's ~8 KB metadata cap. Beyond that, data stays local on each device (the sync dot shows "локално").
+- For a guaranteed backup/transfer: use **↑ Експорт** to save a JSON file, then **↓ Импорт** elsewhere.
 
-> **Note:** Each device gets its own anonymous user unless you add proper authentication later.
+> **Note:** Because Clerk metadata is capped at ~8 KB, large datasets (lots of service-log entries, documents, or several cars) won't fully sync across devices. Use Export/Import for those.
 
 ---
 
@@ -93,11 +88,10 @@ Or directly on GitHub:
 ```
 volvo-app/
 ├── src/
-│   ├── App.jsx                 # Main app, Supabase auth + sync
-│   ├── main.jsx                # React entry point
+│   ├── App.jsx                 # Main app, Clerk auth + local persistence
+│   ├── main.jsx                # React entry point (ClerkProvider)
 │   ├── index.css               # All styles
 │   ├── lib/
-│   │   ├── supabase.js         # Supabase client
 │   │   └── data.js             # Default items + calculation logic
 │   └── components/
 │       ├── MainTable.jsx       # Sortable maintenance table
@@ -107,8 +101,7 @@ volvo-app/
 │       ├── ItemModal.jsx       # Add/edit item form
 │       ├── StatsRow.jsx        # Stats cards
 │       └── Toast.jsx           # Notification toast
-├── supabase_schema.sql         # Run once in Supabase SQL editor
-├── .env.example                # Copy to .env for local dev
+├── .env.example                # Copy to .env for local dev (Clerk key)
 ├── vercel.json                 # Vercel SPA routing config
 ├── vite.config.js              # Vite build config
 └── package.json
@@ -128,7 +121,7 @@ npm install
 
 # 3. Create .env file
 cp .env.example .env
-# Edit .env and add your Supabase credentials
+# Edit .env and add your Clerk publishable key (VITE_CLERK_PUBLISHABLE_KEY)
 
 # 4. Start dev server
 npm run dev
@@ -142,7 +135,7 @@ npm run dev
 | Service | Free Limit | Your Usage |
 |---------|-----------|-----------|
 | Vercel  | 100 GB bandwidth/month | ~< 1 MB/month |
-| Supabase | 500 MB database, 50K MAU | ~< 1 MB, 1 user |
+| Clerk   | 10,000 monthly active users | 1 user |
 | GitHub  | Unlimited private repos | ✓ |
 
 **You will never exceed free limits for personal use.**

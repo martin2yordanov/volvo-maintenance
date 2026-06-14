@@ -1,21 +1,7 @@
-import { useEffect, useState } from 'react'
-import { supabase } from '../lib/supabase'
-import { calcNextDue, CAT_ORDER } from '../lib/data'
+import { calcNextDue } from '../lib/data'
 
-export default function ShareView({ token }) {
-  const [data, setData]   = useState(null)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    supabase.from('car_shares').select('data').eq('token', token).maybeSingle()
-      .then(({ data: row, error: err }) => {
-        if (err || !row) { setError('Линкът е невалиден или е изтекъл.'); return }
-        setData(row.data)
-      })
-  }, [token])
-
-  if (error) return <div className="share-error">{error}</div>
-  if (!data)  return <div className="loading-screen"><div className="spinner"/><span>Зареждане…</span></div>
+export default function ShareView({ data }) {
+  if (!data) return <div className="share-error">Линкът е невалиден или е изтекъл.</div>
 
   const { carInfo, maintenance = [], serviceLog = [], odo } = data
 
