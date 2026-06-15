@@ -581,7 +581,7 @@ export default function App() {
   const THEMES = [
     { id: 'light',        label: 'Light',        swatch: '#f5f5f7', border: '#c7c7cc' },
     { id: 'dark',         label: 'Dark',          swatch: '#2c2c2e', border: '#48484a' },
-    { id: 'purple-dark',  label: 'Purple Dark',   swatch: '#261636', border: '#bf5af2' },
+    { id: 'dark-yellow',  label: 'Dark Gold',      swatch: '#231e0f', border: '#d4af37' },
     { id: 'purple-white', label: 'Purple White',  swatch: '#f8f4ff', border: '#7c3aed' },
     { id: 'grey',         label: 'Grey',          swatch: '#e0e0e6', border: '#86868b' },
   ]
