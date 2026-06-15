@@ -28,6 +28,117 @@
   --rs: 8px;
 }
 
+/* ── Dark theme ────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg:       #1c1c1e;
+  --surf:     #2c2c2e;
+  --surf2:    #3a3a3c;
+  --surf3:    #48484a;
+  --bord:     rgba(255,255,255,0.08);
+  --bord2:    rgba(255,255,255,0.14);
+  --txt:      #f5f5f7;
+  --txt2:     #aeaeb2;
+  --txt3:     #6e6e73;
+  --acc:      #0a84ff;
+  --acc2:     #409cff;
+  --acc-bg:   rgba(10,132,255,0.15);
+  --ok:       #30d158;
+  --ok-bg:    rgba(48,209,88,0.12);
+  --warn:     #ff9f0a;
+  --warn-bg:  rgba(255,159,10,0.12);
+  --red:      #ff453a;
+  --red-bg:   rgba(255,69,58,0.12);
+  --shadow:   0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.4), 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* ── Purple-dark theme ─────────────────────────────────────────────────── */
+[data-theme="purple-dark"] {
+  --bg:       #1a1025;
+  --surf:     #261636;
+  --surf2:    #321d47;
+  --surf3:    #3e2558;
+  --bord:     rgba(191,90,242,0.15);
+  --bord2:    rgba(191,90,242,0.25);
+  --txt:      #f0e6ff;
+  --txt2:     #c8a8f0;
+  --txt3:     #8b6ab5;
+  --acc:      #bf5af2;
+  --acc2:     #d070ff;
+  --acc-bg:   rgba(191,90,242,0.18);
+  --ok:       #30d158;
+  --ok-bg:    rgba(48,209,88,0.12);
+  --warn:     #ff9f0a;
+  --warn-bg:  rgba(255,159,10,0.12);
+  --red:      #ff453a;
+  --red-bg:   rgba(255,69,58,0.12);
+  --shadow:   0 1px 3px rgba(0,0,0,0.4), 0 1px 2px rgba(0,0,0,0.25);
+  --shadow-md:0 4px 20px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3);
+}
+
+/* ── Purple-white theme ────────────────────────────────────────────────── */
+[data-theme="purple-white"] {
+  --bg:       #f8f4ff;
+  --surf:     #ffffff;
+  --surf2:    #f3eaff;
+  --surf3:    #e8d8ff;
+  --bord:     rgba(124,58,237,0.1);
+  --bord2:    rgba(124,58,237,0.18);
+  --txt:      #1e0a3c;
+  --txt2:     #6b4fa0;
+  --txt3:     #a688d4;
+  --acc:      #7c3aed;
+  --acc2:     #6d28d9;
+  --acc-bg:   rgba(124,58,237,0.08);
+  --ok:       #059669;
+  --ok-bg:    rgba(5,150,105,0.08);
+  --warn:     #d97706;
+  --warn-bg:  rgba(217,119,6,0.08);
+  --red:      #dc2626;
+  --red-bg:   rgba(220,38,38,0.08);
+  --shadow:   0 1px 3px rgba(124,58,237,0.1), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:0 4px 16px rgba(124,58,237,0.12), 0 2px 4px rgba(0,0,0,0.04);
+}
+
+/* ── Grey theme ────────────────────────────────────────────────────────── */
+[data-theme="grey"] {
+  --bg:       #e8e8ed;
+  --surf:     #f5f5f7;
+  --surf2:    #e0e0e6;
+  --surf3:    #d1d1d8;
+  --bord:     rgba(0,0,0,0.1);
+  --bord2:    rgba(0,0,0,0.18);
+  --txt:      #1d1d1f;
+  --txt2:     #48484a;
+  --txt3:     #86868b;
+  --acc:      #48484a;
+  --acc2:     #3a3a3c;
+  --acc-bg:   rgba(72,72,74,0.08);
+  --ok:       #248a3d;
+  --ok-bg:    rgba(36,138,61,0.08);
+  --warn:     #b25000;
+  --warn-bg:  rgba(178,80,0,0.08);
+  --red:      #d70015;
+  --red-bg:   rgba(215,0,21,0.08);
+  --shadow:   0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-md:0 4px 16px rgba(0,0,0,0.1), 0 2px 4px rgba(0,0,0,0.06);
+}
+
+/* ── Dark/purple-dark header override ──────────────────────────────────── */
+[data-theme="dark"] .hdr,
+[data-theme="purple-dark"] .hdr {
+  background: rgba(28,28,30,0.88);
+}
+[data-theme="purple-dark"] .hdr {
+  background: rgba(26,16,37,0.9);
+}
+[data-theme="grey"] .hdr {
+  background: rgba(232,232,237,0.88);
+}
+[data-theme="purple-white"] .hdr {
+  background: rgba(248,244,255,0.88);
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { font-size: 16px; }
 body {
@@ -82,6 +193,38 @@ body {
 .btn-pri:hover { background: var(--acc2); box-shadow: 0 2px 8px rgba(0,113,227,.3); }
 .btn-red   { background: var(--surf); color: var(--red); border-color: rgba(255,59,48,.25); }
 .btn-red:hover { background: var(--red-bg); }
+
+/* ── Theme switcher ───────────────────────────────────────────────────── */
+.theme-switcher { position: relative; }
+.theme-btn {
+  font-family: var(--fh); font-weight: 600; font-size: .72rem;
+  padding: .38rem .65rem; border-radius: var(--rs);
+  border: 1px solid var(--bord2); cursor: pointer;
+  background: var(--surf); color: var(--txt2);
+  display: flex; align-items: center; gap: .3rem; white-space: nowrap;
+  transition: background .12s; user-select: none;
+}
+.theme-btn:hover { background: var(--surf2); color: var(--txt); }
+.theme-menu {
+  position: absolute; top: calc(100% + 6px); right: 0;
+  background: var(--surf); border: 1px solid var(--bord2);
+  border-radius: var(--r); box-shadow: var(--shadow-md);
+  min-width: 140px; z-index: 300; overflow: hidden;
+  animation: fadeDown .12s ease;
+}
+@keyframes fadeDown { from { opacity: 0; transform: translateY(-4px) } to { opacity: 1; transform: none } }
+.theme-opt {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .52rem .8rem; cursor: pointer; font-size: .78rem;
+  font-family: var(--fh); font-weight: 500; color: var(--txt2);
+  transition: background .1s;
+}
+.theme-opt:hover { background: var(--surf2); color: var(--txt); }
+.theme-opt.active { color: var(--acc); font-weight: 700; }
+.theme-swatch {
+  width: 1rem; height: 1rem; border-radius: 50%;
+  flex-shrink: 0; border: 1.5px solid var(--bord2);
+}
 
 /* ── Odo inline card input ────────────────────────────────────────────── */
 .odo-card-inp {

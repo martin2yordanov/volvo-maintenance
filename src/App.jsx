@@ -64,6 +64,8 @@ export default function App() {
   const [items, setItems]         = useState([])
   const [odo, setOdo]             = useState(null)
   const [activeTab, setActiveTab] = useState(() => localStorage.getItem('activeTab') || 'main')
+  const [theme, setTheme]         = useState(() => localStorage.getItem('theme') || 'light')
+  const [themeOpen, setThemeOpen] = useState(false)
   const [urgentBannerDismissed, setUrgentBannerDismissed] = useState(() => !!sessionStorage.getItem('bannerDismissed'))
   const [returnBanner, setReturnBanner] = useState(false)
   const [sortState, setSortState] = useState({ col: null, dir: 1 })
@@ -570,6 +572,25 @@ export default function App() {
     document.title = urgentCount > 0 ? `(${urgentCount}) ${name}` : name
   }, [urgentCount, carInfo])
 
+  // ─── Theme ────────────────────────────────────────────────────────────────
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme === 'light' ? '' : theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const THEMES = [
+    { id: 'light',        label: 'Light',        swatch: '#f5f5f7', border: '#c7c7cc' },
+    { id: 'dark',         label: 'Dark',          swatch: '#2c2c2e', border: '#48484a' },
+    { id: 'purple-dark',  label: 'Purple Dark',   swatch: '#261636', border: '#bf5af2' },
+    { id: 'purple-white', label: 'Purple White',  swatch: '#f8f4ff', border: '#7c3aed' },
+    { id: 'grey',         label: 'Grey',          swatch: '#e0e0e6', border: '#86868b' },
+  ]
+
+  function switchTheme(id) {
+    setTheme(id)
+    setThemeOpen(false)
+  }
+
   // ─── Persist active tab ───────────────────────────────────────────────────
   function switchTab(id) {
     setActiveTab(id)
@@ -774,6 +795,30 @@ export default function App() {
               email={emailReminders.email}
               onSave={saveEmailReminders}
             />
+
+            {/* ── Theme switcher ── */}
+            <div className="theme-switcher">
+              <button className="theme-btn" onClick={() => setThemeOpen(o => !o)} title="Смени тема">
+                🎨 {THEMES.find(t => t.id === theme)?.label}
+              </button>
+              {themeOpen && (
+                <>
+                  <div style={{ position:'fixed', inset:0, zIndex:299 }} onClick={() => setThemeOpen(false)} />
+                  <div className="theme-menu">
+                    {THEMES.map(t => (
+                      <div
+                        key={t.id}
+                        className={`theme-opt${theme === t.id ? ' active' : ''}`}
+                        onClick={() => switchTheme(t.id)}
+                      >
+                        <span className="theme-swatch" style={{ background: t.swatch, borderColor: t.border }} />
+                        {t.label}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* ── Account ── */}
             <div className="sync-divider" />
